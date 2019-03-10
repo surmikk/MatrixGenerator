@@ -40,6 +40,9 @@ namespace RP_BruteForce
 
     class LinesDistributor
     {
+        /// <summary>
+        /// an array that contains bounds of the current matrix side distribution
+        /// </summary>
         public int[] indices;
         int matrixSize;
         public LinesDistributor(int matrixSize, int numberOfSectionSepararators)
@@ -57,6 +60,9 @@ namespace RP_BruteForce
                 indices[i] = i;
             }
         }
+        /// <summary>
+        /// Tries to make another distribution. Returns false and reinitializes if there isn't another distribution
+        /// </summary>
         public bool NextPosition()
         {
             bool overflow = false;
@@ -90,11 +96,9 @@ namespace RP_BruteForce
         static Matrix01 PatternMatrix;
         static Random rndm = new Random();
 
-        static MatrixSize LoadMatrixSize()
+        static MatrixSize LoadMatrixSize(string inputLine)
         {
-            Console.WriteLine("Enter matrix size (e.g.: 3 5)");
-            string input = Console.ReadLine();
-            string[] tokens = input.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            string[] tokens = inputLine.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             if (tokens.Length != 2 ||
                 !int.TryParse(tokens[0], out int linesNumber) ||
                 !int.TryParse(tokens[1], out int columnNumber))
@@ -160,7 +164,9 @@ namespace RP_BruteForce
                 RndmMatrix.numberOf1++;
             }
         }
-
+        /// <summary>
+        /// Returns true if there is an 1 element in given rectangle
+        /// </summary>
         static bool CheckRectangle(LinesDistributor ld, LinesDistributor cd, int lineNum, int colNum)
         {
             for (int i = ld.indices[lineNum]; i < ld.indices[lineNum + 1]; i++)
@@ -175,6 +181,11 @@ namespace RP_BruteForce
             }
             return false;
         }
+        /// <summary>
+        /// Tests whether every rectangle inside random matrix contains an 1 for given distribution and pattern.
+        /// </summary>
+        /// <param name="Distribution of lines"></param>
+        /// <param name="Distribution of columns"></param>
         static bool CheckPattern(LinesDistributor ld, LinesDistributor cd)
         {
             for (int i = 0; i < PatternMatrix.linesNumber; i++)
@@ -186,31 +197,36 @@ namespace RP_BruteForce
                     {
                         if (!CheckRectangle(ld, cd, i, j))
                         {
+                            //forbidden patern does'n exist in this distribution
                             return false;
                         }
                     }
                 }
             }
+            //forbidden patern found
             return true;
         }
+        /// <summary>
+        /// Returns true if the new matrix doesn't contain forbidden pattern, otherwise keeps original matrix.
+        /// </summary>
         static bool ChangeAndTestMatrix()
         {
             int rndmLine = rndm.Next(RndmMatrix.linesNumber);
             int rndmColumn = rndm.Next(RndmMatrix.columnNumber);
             SwapElement(rndmLine, rndmColumn);
 
-            //test whether forbidden pattern wasn't made
+            //tests whether forbidden pattern wasn't made
             if(RndmMatrix.numberOf1 >= PatternMatrix.numberOf1)
             {
                 LinesDistributor linesDistributor = new LinesDistributor(RndmMatrix.linesNumber, PatternMatrix.linesNumber - 1);
                 LinesDistributor columnDistributor = new LinesDistributor(RndmMatrix.columnNumber, PatternMatrix.columnNumber - 1);
 
-                //tests every rectangle
+                //tests every possible distribution
                 do
                 {
                     do
                     {
-                        if(CheckPattern(linesDistributor,columnDistributor))
+                        if(CheckPattern(linesDistributor,columnDistributor)) 
                         {
                             SwapElement(rndmLine, rndmColumn);
                             return false;
@@ -225,34 +241,56 @@ namespace RP_BruteForce
        
         static void Main(string[] args)
         {
+            Console.WriteLine("**Enter \"help\" for illustration of a valid input**");
             MatrixSize size;
-            if ((size = LoadMatrixSize()) == null) 
+            Console.WriteLine("Enter sizes of random matrix.");
+            string input = Console.ReadLine();
+            if (input == "help")
             {
-                return;
+                Console.WriteLine("->Enter sizes of random matrix. (lines \"space\" columns)");
+                Console.WriteLine("3 5");
+                Console.WriteLine("->Enter sizes of pattern matrix.");
+                Console.WriteLine("2 3");
+                Console.WriteLine("->Enter pattern 01-matrix of given sizes. (every row on a new line, without spaces)");
+                Console.WriteLine("101");
+                Console.WriteLine("010");
+                Console.WriteLine("->Enter number of random iterations.");
+                Console.WriteLine("200");
+                Console.WriteLine("**END of the illustration**");
+                Console.WriteLine();
+                Console.WriteLine("Enter sizes of random matrix.");
+                input = Console.ReadLine();
+                size = LoadMatrixSize(input);
             }
+            else
+            {
+                size = LoadMatrixSize(input);
+            }
+            if (size == null) return;
             RndmMatrix = new Matrix01(size);
-            if ((size = LoadMatrixSize()) == null || 
+
+            Console.WriteLine("Enter sizes of pattern matrix.");
+            if ((size = LoadMatrixSize(Console.ReadLine())) == null || 
                 size.linesNumber > RndmMatrix.linesNumber || 
                 size.columnNumber > RndmMatrix.columnNumber)
             {
                 return;
             }
             PatternMatrix = new Matrix01(size);
+            Console.WriteLine("Enter pattern 01-matrix of given sizes.");
             LoadPatternMatrix();
 
-            int counter = 0;
-            for (int i = 0; i < 1000; i++)
+            Console.WriteLine("Enter number of random iterations.");
+            int iterationsNumber = int.Parse(Console.ReadLine());
+            Console.WriteLine("**Enter \"end\" to exit or any key to continue**");
+            do
             {
-                if (ChangeAndTestMatrix()) 
+                for (int i = 0; i < iterationsNumber; i++)
                 {
-                    counter++;
-                    if (counter % 64 == 0)
-                    {
-                        Console.WriteLine("___matice {0}:___", i);
-                        PrintMatrix(RndmMatrix);
-                    }
+                    ChangeAndTestMatrix();
                 }
-            }
+                PrintMatrix(RndmMatrix);
+            } while((input = Console.ReadLine()) != "end");
         }
     }
 }
