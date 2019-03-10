@@ -23,6 +23,7 @@ namespace RP_BruteForce
     {
         public readonly int linesNumber;
         public readonly int columnNumber;
+        public int numberOf1;
         public BitArray[] element;
         public Matrix01(MatrixSize size)
         {
@@ -39,46 +40,46 @@ namespace RP_BruteForce
 
     class LinesDistributor
     {
-        int[] indices;
-        int size;
-        public LinesDistributor(int size, int numberOfSectionSepararators)
+        public int[] indices;
+        int matrixSize;
+        public LinesDistributor(int matrixSize, int numberOfSectionSepararators)
         {
-            indices = new int[numberOfSectionSepararators];
-            this.size = size;
-            for (int i = 0; i < numberOfSectionSepararators; i++)
-            {
-                indices[i] = i + 1;
-            }
-            PrintState();
+            indices = new int[numberOfSectionSepararators + 2];
+            this.matrixSize = matrixSize;
+            indices[0] = 0;
+            InitialPosition();
+            indices[numberOfSectionSepararators + 1] = matrixSize;
         }
-        void PrintState()
+        void InitialPosition()
         {
-            for (int i = 0; i < indices.Length; i++)
+            for (int i = 1; i < indices.Length - 1; i++)
             {
-                Console.Write("{0} ", indices[i]);
+                indices[i] = i;
             }
-            Console.WriteLine();
         }
         public bool NextPosition()
         {
             bool overflow = false;
-            int i = indices.Length - 1;
-            indices[i]++;;
-            while(indices[i] > size - indices.Length + i )
+            int i = indices.Length - 2;
+            indices[i]++;
+            while(indices[i] > matrixSize - indices.Length + 2 + i )
             {
                 overflow = true;
                 i--;
-                if (i < 0) return false;
+                if (i < 1)
+                {
+                    InitialPosition();
+                    return false;
+                }
                 indices[i]++;
             }
             if(overflow)
             {
-                for (int j = i + 1; j < indices.Length; j++) 
+                for (int j = i + 1; j < indices.Length - 1; j++) 
                 {
                     indices[j] = indices[j - 1] + 1;
                 }
             }
-            //PrintState();
             return true;
         }
     }
@@ -98,7 +99,7 @@ namespace RP_BruteForce
                 !int.TryParse(tokens[0], out int linesNumber) ||
                 !int.TryParse(tokens[1], out int columnNumber))
             {
-                Console.WriteLine("Wrong format. Press any key for exit.");
+                Console.WriteLine("Wrong format. Press any key to exit.");
                 Console.ReadLine();
                 return null;
             }
@@ -121,6 +122,7 @@ namespace RP_BruteForce
                     if (inputLine[j] != '0')
                     {
                         PatternMatrix.element[i][j] = true;
+                        PatternMatrix.numberOf1++;
                     }
                 }
             }
@@ -143,7 +145,6 @@ namespace RP_BruteForce
                 }
                 Console.WriteLine();
             }
-            Console.WriteLine("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
         }
 
         static void SwapElement(int i, int j)
@@ -151,25 +152,79 @@ namespace RP_BruteForce
             if (RndmMatrix.element[i][j] == true)
             {
                 RndmMatrix.element[i][j] = false;
+                RndmMatrix.numberOf1--;
             }
             else
             {
                 RndmMatrix.element[i][j] = true;
+                RndmMatrix.numberOf1++;
             }
         }
 
-        static void ChangeAndTestMatrix()
+        static bool CheckRectangle(LinesDistributor ld, LinesDistributor cd, int lineNum, int colNum)
+        {
+            for (int i = ld.indices[lineNum]; i < ld.indices[lineNum + 1]; i++)
+            {
+                for(int j = cd.indices[colNum]; j < cd.indices[colNum + 1]; j++)
+                {
+                    if(RndmMatrix.element[i][j])
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+        static bool CheckPattern(LinesDistributor ld, LinesDistributor cd)
+        {
+            for (int i = 0; i < PatternMatrix.linesNumber; i++)
+            {
+                for (int j = 0; j < PatternMatrix.columnNumber; j++)
+                {
+                    //if there must be a 1 element in specified rectangle
+                    if (PatternMatrix.element[i][j])
+                    {
+                        if (!CheckRectangle(ld, cd, i, j))
+                        {
+                            return false;
+                        }
+                    }
+                }
+            }
+            return true;
+        }
+        static bool ChangeAndTestMatrix()
         {
             int rndmLine = rndm.Next(RndmMatrix.linesNumber);
             int rndmColumn = rndm.Next(RndmMatrix.columnNumber);
             SwapElement(rndmLine, rndmColumn);
 
+            //test whether forbidden pattern wasn't made
+            if(RndmMatrix.numberOf1 >= PatternMatrix.numberOf1)
+            {
+                LinesDistributor linesDistributor = new LinesDistributor(RndmMatrix.linesNumber, PatternMatrix.linesNumber - 1);
+                LinesDistributor columnDistributor = new LinesDistributor(RndmMatrix.columnNumber, PatternMatrix.columnNumber - 1);
 
+                //tests every rectangle
+                do
+                {
+                    do
+                    {
+                        if(CheckPattern(linesDistributor,columnDistributor))
+                        {
+                            SwapElement(rndmLine, rndmColumn);
+                            return false;
+                        }
+
+                    } while (columnDistributor.NextPosition());
+
+                } while (linesDistributor.NextPosition());
+            }
+            return true;
         }
        
         static void Main(string[] args)
         {
-            /*
             MatrixSize size;
             if ((size = LoadMatrixSize()) == null) 
             {
@@ -185,23 +240,19 @@ namespace RP_BruteForce
             PatternMatrix = new Matrix01(size);
             LoadPatternMatrix();
 
-
-
-            //PrintMatrix(RndmMatrix);
-            //PrintMatrix(PatternMatrix);
-            */
-
-            Stopwatch sw = new Stopwatch();
-
-            LinesDistributor ld = new LinesDistributor(200, 6);
-            ld.NextPosition();
-            sw.Start();
-            while (ld.NextPosition() != false)
+            int counter = 0;
+            for (int i = 0; i < 1000; i++)
             {
-
+                if (ChangeAndTestMatrix()) 
+                {
+                    counter++;
+                    if (counter % 64 == 0)
+                    {
+                        Console.WriteLine("___matice {0}:___", i);
+                        PrintMatrix(RndmMatrix);
+                    }
+                }
             }
-            sw.Stop();
-            Console.WriteLine("Elapsed={0}", sw.Elapsed);
         }
     }
 }
