@@ -94,14 +94,16 @@ namespace RP_BruteForce
     {
         static Matrix01 RndmMatrix;
         static Matrix01 PatternMatrix;
-        static Random rndm = new Random();
+        static Random rndm = new Random(1);
 
         static MatrixSize LoadMatrixSize(string inputLine)
         {
+            int linesNumber;
+            int columnNumber;
             string[] tokens = inputLine.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             if (tokens.Length != 2 ||
-                !int.TryParse(tokens[0], out int linesNumber) ||
-                !int.TryParse(tokens[1], out int columnNumber))
+                !int.TryParse(tokens[0], out linesNumber) ||
+                !int.TryParse(tokens[1], out columnNumber))
             {
                 Console.WriteLine("Wrong format. Press any key to exit.");
                 Console.ReadLine();
@@ -151,17 +153,19 @@ namespace RP_BruteForce
             }
         }
 
-        static void SwapElement(int i, int j)
+        static bool SwapElement(int i, int j)
         {
             if (RndmMatrix.element[i][j] == true)
             {
                 RndmMatrix.element[i][j] = false;
                 RndmMatrix.numberOf1--;
+                return false;
             }
             else
             {
                 RndmMatrix.element[i][j] = true;
                 RndmMatrix.numberOf1++;
+                return true;
             }
         }
         /// <summary>
@@ -213,15 +217,14 @@ namespace RP_BruteForce
         {
             int rndmLine = rndm.Next(RndmMatrix.linesNumber);
             int rndmColumn = rndm.Next(RndmMatrix.columnNumber);
-            SwapElement(rndmLine, rndmColumn);
+            bool element1Created = SwapElement(rndmLine, rndmColumn);
 
             //tests whether forbidden pattern wasn't made
-            if(RndmMatrix.numberOf1 >= PatternMatrix.numberOf1)
+            if(element1Created && RndmMatrix.numberOf1 >= PatternMatrix.numberOf1)
             {
                 LinesDistributor linesDistributor = new LinesDistributor(RndmMatrix.linesNumber, PatternMatrix.linesNumber - 1);
                 LinesDistributor columnDistributor = new LinesDistributor(RndmMatrix.columnNumber, PatternMatrix.columnNumber - 1);
 
-                //tests every possible distribution
                 do
                 {
                     do
@@ -283,12 +286,23 @@ namespace RP_BruteForce
             Console.WriteLine("Enter number of random iterations.");
             int iterationsNumber = int.Parse(Console.ReadLine());
             Console.WriteLine("**Enter \"end\" to exit or any key to continue**");
+
+            Stopwatch sw = new Stopwatch();
+
+            while(PatternMatrix.numberOf1 > RndmMatrix.numberOf1)
+            {
+                ChangeAndTestMatrix();
+            }
+
             do
             {
+                sw.Restart();
                 for (int i = 0; i < iterationsNumber; i++)
                 {
                     ChangeAndTestMatrix();
                 }
+                sw.Stop();
+                Console.WriteLine(sw.Elapsed);
                 PrintMatrix(RndmMatrix);
             } while((input = Console.ReadLine()) != "end");
         }
