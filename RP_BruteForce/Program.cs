@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -171,11 +172,11 @@ namespace RP_BruteForce
             return new MatrixSize(linesNumber, columnNumber);
         }
 
-        static void LoadPatternMatrix()
+        static void LoadPatternMatrix(TextReader sr)
         {
             for (int i = 0; i < PatternMatrix.linesNumber; i++)
             {
-                string inputLine = Console.ReadLine();
+                string inputLine = sr.ReadLine();
                 if(inputLine.Length != PatternMatrix.columnNumber)
                 {
                     throw new FormatException();
@@ -338,56 +339,79 @@ namespace RP_BruteForce
        
         static void Main(string[] args)
         {
-            Console.WriteLine("**Enter \"help\" for illustration of a valid input**");
+            int iterationsNumber;
             MatrixSize size;
-            Console.WriteLine("Enter sizes of random matrix.");
-            string input = Console.ReadLine();
-            if (input == "help")
+            if (args.Length > 0)
             {
-                Console.WriteLine("->Enter sizes of random matrix. (lines \"space\" columns)");
-                Console.WriteLine("3 5");
-                Console.WriteLine("->Enter sizes of pattern matrix.");
-                Console.WriteLine("2 3");
-                Console.WriteLine("->Enter pattern 01-matrix of given sizes. (every row on a new line, without spaces)");
-                Console.WriteLine("101");
-                Console.WriteLine("010");
-                Console.WriteLine("->Enter number of random iterations.");
-                Console.WriteLine("200");
-                Console.WriteLine("**END of the illustration**");
-                Console.WriteLine();
-                Console.WriteLine("Enter sizes of random matrix.");
-                input = Console.ReadLine();
+                StreamReader sr = new StreamReader(args[0]);
+                string input = sr.ReadLine();
                 size = LoadMatrixSize(input);
+                if (size == null) return;
+                RndmMatrix = new Matrix01(size);
+
+                if ((size = LoadMatrixSize(sr.ReadLine())) == null ||
+                    size.linesNumber > RndmMatrix.linesNumber ||
+                    size.columnNumber > RndmMatrix.columnNumber)
+                {
+                    return;
+                }
+                PatternMatrix = new Matrix01(size);
+                LoadPatternMatrix(sr);
+                iterationsNumber = int.Parse(sr.ReadLine());
             }
             else
             {
-                size = LoadMatrixSize(input);
-            }
-            if (size == null) return;
-            RndmMatrix = new Matrix01(size);
+                Console.WriteLine("**Enter \"help\" for illustration of a valid input**");
+                Console.WriteLine("Enter sizes of random matrix.");
+                string input = Console.ReadLine();
+                if (input == "help")
+                {
+                    Console.WriteLine("->Enter sizes of random matrix. (lines \"space\" columns)");
+                    Console.WriteLine("3 5");
+                    Console.WriteLine("->Enter sizes of pattern matrix.");
+                    Console.WriteLine("2 3");
+                    Console.WriteLine("->Enter pattern 01-matrix of given sizes. (every row on a new line, without spaces)");
+                    Console.WriteLine("101");
+                    Console.WriteLine("010");
+                    Console.WriteLine("->Enter number of random iterations.");
+                    Console.WriteLine("200");
+                    Console.WriteLine("**END of the illustration**");
+                    Console.WriteLine();
+                    Console.WriteLine("Enter sizes of random matrix.");
+                    input = Console.ReadLine();
+                    size = LoadMatrixSize(input);
+                }
+                else
+                {
+                    size = LoadMatrixSize(input);
+                }
+                if (size == null) return;
+                RndmMatrix = new Matrix01(size);
 
-            Console.WriteLine("Enter sizes of pattern matrix.");
-            if ((size = LoadMatrixSize(Console.ReadLine())) == null || 
-                size.linesNumber > RndmMatrix.linesNumber || 
-                size.columnNumber > RndmMatrix.columnNumber)
-            {
-                return;
-            }
-            PatternMatrix = new Matrix01(size);
-            Console.WriteLine("Enter pattern 01-matrix of given sizes.");
-            LoadPatternMatrix();
+                Console.WriteLine("Enter sizes of pattern matrix.");
+                if ((size = LoadMatrixSize(Console.ReadLine())) == null ||
+                    size.linesNumber > RndmMatrix.linesNumber ||
+                    size.columnNumber > RndmMatrix.columnNumber)
+                {
+                    return;
+                }
+                PatternMatrix = new Matrix01(size);
+                Console.WriteLine("Enter pattern 01-matrix of given sizes.");
+                LoadPatternMatrix(Console.In);
 
-            Console.WriteLine("Enter number of random iterations.");
-            int iterationsNumber = int.Parse(Console.ReadLine());
-            Console.WriteLine("**Enter \"end\" to exit or any key to continue**");
+                Console.WriteLine("Enter number of random iterations.");
+                iterationsNumber = int.Parse(Console.ReadLine());
+                Console.WriteLine("**Enter \"end\" to exit or any key to continue**");
+            }
 
             Stopwatch sw = new Stopwatch();
 
             while(PatternMatrix.numberOf1 > RndmMatrix.numberOf1)
             {
                 ChangeAndTestMatrix();
-            } 
+            }
 
+            string entry;
             do
             {
                 sw.Restart();
@@ -398,7 +422,7 @@ namespace RP_BruteForce
                 sw.Stop();
                 Console.WriteLine(sw.Elapsed);
                 PrintMatrix(RndmMatrix);
-            } while((input = Console.ReadLine()) != "end");
+            } while((entry = Console.ReadLine()) != "end");
         }
     }
 }
