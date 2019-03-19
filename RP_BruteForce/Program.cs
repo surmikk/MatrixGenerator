@@ -43,38 +43,89 @@ namespace RP_BruteForce
         /// <summary>
         /// an array that contains bounds of the current matrix side distribution
         /// </summary>
+        public bool distributionSuccesfull;
         public int[] indices;
-        int matrixSize;
-        public LinesDistributor(int matrixSize, int numberOfSectionSepararators)
+        public int[] lowerBorder;
+        public int[] upperBorder;
+        int rndmMatrixSize;
+        int[] indicesX;
+        public LinesDistributor(int matrixSize, int numberOfSectionSepararators, int patternLine, int swappedLine)
         {
             indices = new int[numberOfSectionSepararators + 2];
-            this.matrixSize = matrixSize;
-            indices[0] = 0;
-            InitialPosition();
-            indices[numberOfSectionSepararators + 1] = matrixSize;
-        }
-        void InitialPosition()
-        {
-            for (int i = 1; i < indices.Length - 1; i++)
+            lowerBorder = new int[numberOfSectionSepararators + 2];
+            upperBorder = new int[numberOfSectionSepararators + 2];
+            indicesX = new int[numberOfSectionSepararators + 2];
+            rndmMatrixSize = matrixSize;
+
+            lowerBorder[1] = 0;
+            indicesX[indicesX.Length - 1] = matrixSize;
+            upperBorder[upperBorder.Length - 2] = matrixSize;
+            if (patternLine == 0)
             {
-                indices[i] = i;
+                lowerBorder[1] = swappedLine + 1;
+            }
+            else if (patternLine == numberOfSectionSepararators)
+            {
+                upperBorder[upperBorder.Length - 2] = swappedLine + 1;
+            }
+            else
+            {
+                upperBorder[patternLine] = swappedLine + 1; 
+                lowerBorder[patternLine + 1] = swappedLine + 1;
+            }
+            distributionSuccesfull = TryInitialize();
+        }
+        public void Initialize()
+        {
+            distributionSuccesfull = true;
+            for (int i = 0; i < indicesX.Length; i++)
+            {
+                indices[i] = indicesX[i];
             }
         }
+        bool TryInitialize()
+        {
+            for(int i = 1; i < lowerBorder.Length - 1; i++)
+            {
+                if(lowerBorder[i] == 0)
+                {
+                    lowerBorder[i] = lowerBorder[i - 1] + 1;
+                }
+            }
+            for (int i = upperBorder.Length - 2; i > 0; i--)
+            {
+                if (upperBorder[i] == 0)
+                {
+                    upperBorder[i] = upperBorder[i + 1] - 1;
+                }
+            }
+            for(int i = 1; i < indicesX.Length - 1; i++)
+            {
+                if (lowerBorder[i] <= upperBorder[i] && lowerBorder[i] < rndmMatrixSize && upperBorder[i] > 1) 
+                {
+                    indicesX[i] = lowerBorder[i];
+                }
+                else return false;
+            }
+            Initialize();
+            return true;
+        }
+
         /// <summary>
-        /// Tries to make another distribution. Returns false and reinitializes if there isn't another distribution
+        /// Tries to make another distribution. Returns false if there isn't another distribution
         /// </summary>
         public bool NextPosition()
         {
             bool overflow = false;
             int i = indices.Length - 2;
             indices[i]++;
-            while(indices[i] > matrixSize - indices.Length + 2 + i )
+            while(indices[i] == upperBorder[i])
             {
                 overflow = true;
                 i--;
                 if (i < 1)
                 {
-                    InitialPosition();
+                    Initialize();
                     return false;
                 }
                 indices[i]++;
@@ -83,7 +134,14 @@ namespace RP_BruteForce
             {
                 for (int j = i + 1; j < indices.Length - 1; j++) 
                 {
-                    indices[j] = indices[j - 1] + 1;
+                    if (indices[j - 1] + 1 < lowerBorder[j])
+                    {
+                        indices[j] = lowerBorder[j];
+                    }
+                    else
+                    {
+                        indices[j] = indices[j - 1] + 1;
+                    }
                 }
             }
             return true;
@@ -168,6 +226,15 @@ namespace RP_BruteForce
                 return true;
             }
         }
+        static bool DistributionPossible(int randomMatrixLine, int patternLine, int rndmSize, int patternSize)
+        {
+            if (randomMatrixLine + patternSize - patternLine <= rndmSize &&
+                randomMatrixLine - patternLine >= 0)
+            {
+                return true;
+            }
+            else return false;
+        }
         /// <summary>
         /// Returns true if there is an 1 element in given rectangle
         /// </summary>
@@ -190,19 +257,22 @@ namespace RP_BruteForce
         /// </summary>
         /// <param name="Distribution of lines"></param>
         /// <param name="Distribution of columns"></param>
-        static bool CheckPattern(LinesDistributor ld, LinesDistributor cd)
+        static bool CheckPattern(LinesDistributor ld, LinesDistributor cd, int patternLine, int patternCol)
         {
             for (int i = 0; i < PatternMatrix.linesNumber; i++)
             {
                 for (int j = 0; j < PatternMatrix.columnNumber; j++)
                 {
-                    //if there must be a 1 element in specified rectangle
-                    if (PatternMatrix.element[i][j])
+                    if(i != patternLine || j != patternCol)
                     {
-                        if (!CheckRectangle(ld, cd, i, j))
+                        //if there must be a 1 element in specified rectangle
+                        if (PatternMatrix.element[i][j])
                         {
-                            //forbidden patern does'n exist in this distribution
-                            return false;
+                            if (!CheckRectangle(ld, cd, i, j))
+                            {
+                                //forbidden patern does'n exist in this distribution
+                                return false;
+                            }
                         }
                     }
                 }
@@ -222,22 +292,46 @@ namespace RP_BruteForce
             //tests whether forbidden pattern wasn't made
             if(element1Created && RndmMatrix.numberOf1 >= PatternMatrix.numberOf1)
             {
-                LinesDistributor linesDistributor = new LinesDistributor(RndmMatrix.linesNumber, PatternMatrix.linesNumber - 1);
-                LinesDistributor columnDistributor = new LinesDistributor(RndmMatrix.columnNumber, PatternMatrix.columnNumber - 1);
+                LinesDistributor linesDistributor;
+                LinesDistributor columnDistributor;
 
-                do
+                for (int i = 0; i < PatternMatrix.linesNumber; i++)
                 {
-                    do
+                    for (int j = 0; j < PatternMatrix.columnNumber; j++)
                     {
-                        if(CheckPattern(linesDistributor,columnDistributor)) 
+                        if (PatternMatrix.element[i][j])
                         {
-                            SwapElement(rndmLine, rndmColumn);
-                            return false;
+                            if (DistributionPossible(rndmLine, i, RndmMatrix.linesNumber, PatternMatrix.linesNumber))
+                            {
+                                linesDistributor = new LinesDistributor(RndmMatrix.linesNumber, PatternMatrix.linesNumber - 1, i, rndmLine);
+                            }
+                            else goto ENDLines;
+                            if (DistributionPossible(rndmColumn, j, RndmMatrix.columnNumber, PatternMatrix.columnNumber))
+                            {
+                                columnDistributor = new LinesDistributor(RndmMatrix.columnNumber, PatternMatrix.columnNumber - 1, j, rndmColumn);
+                            }
+                            else goto ENDColumns;
+                            if(linesDistributor.distributionSuccesfull && columnDistributor.distributionSuccesfull) //SMAZAT!!!!!!!!!!!!!!
+                            {
+                                do
+                                {
+                                    do
+                                    {
+                                        if (CheckPattern(linesDistributor, columnDistributor,i,j))
+                                        {
+                                            SwapElement(rndmLine, rndmColumn);
+                                            return false;
+                                        }
+
+                                    } while (columnDistributor.NextPosition());
+
+                                } while (linesDistributor.NextPosition());
+                            }
                         }
-
-                    } while (columnDistributor.NextPosition());
-
-                } while (linesDistributor.NextPosition());
+                        ENDColumns:;
+                    }
+                    ENDLines:;
+                }
             }
             return true;
         }
@@ -292,7 +386,7 @@ namespace RP_BruteForce
             while(PatternMatrix.numberOf1 > RndmMatrix.numberOf1)
             {
                 ChangeAndTestMatrix();
-            }
+            } 
 
             do
             {
