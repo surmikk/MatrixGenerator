@@ -36,7 +36,6 @@ namespace RP_BruteForce
                 element[i] = new BitArray(columnNumber, false);
             }
         }
-
     }
 
     class LinesDistributor
@@ -44,23 +43,20 @@ namespace RP_BruteForce
         /// <summary>
         /// an array that contains bounds of the current matrix side distribution
         /// </summary>
-        public bool distributionSuccesfull;
         public int[] indices;
-        public int[] lowerBorder;
-        public int[] upperBorder;
-        int rndmMatrixSize;
-        int[] indicesX;
+        readonly int[] lowerBorder;
+        readonly int[] upperBorder;
+        readonly int rndmMatrixSize;
         public LinesDistributor(int matrixSize, int numberOfSectionSepararators, int patternLine, int swappedLine)
         {
             indices = new int[numberOfSectionSepararators + 2];
             lowerBorder = new int[numberOfSectionSepararators + 2];
             upperBorder = new int[numberOfSectionSepararators + 2];
-            indicesX = new int[numberOfSectionSepararators + 2];
             rndmMatrixSize = matrixSize;
 
             lowerBorder[1] = 0;
-            indicesX[indicesX.Length - 1] = matrixSize;
             upperBorder[upperBorder.Length - 2] = matrixSize;
+            indices[indices.Length - 1] = matrixSize;
             if (patternLine == 0)
             {
                 lowerBorder[1] = swappedLine + 1;
@@ -74,17 +70,17 @@ namespace RP_BruteForce
                 upperBorder[patternLine] = swappedLine + 1; 
                 lowerBorder[patternLine + 1] = swappedLine + 1;
             }
-            distributionSuccesfull = TryInitialize();
+            SetBorders();
+            InitializeIndices();
         }
-        public void Initialize()
+        public void InitializeIndices()
         {
-            distributionSuccesfull = true;
-            for (int i = 0; i < indicesX.Length; i++)
+            for (int i = 1; i < indices.Length - 1; i++)
             {
-                indices[i] = indicesX[i];
+                indices[i] = lowerBorder[i];
             }
         }
-        bool TryInitialize()
+        void SetBorders()
         {
             for(int i = 1; i < lowerBorder.Length - 1; i++)
             {
@@ -100,16 +96,6 @@ namespace RP_BruteForce
                     upperBorder[i] = upperBorder[i + 1] - 1;
                 }
             }
-            for(int i = 1; i < indicesX.Length - 1; i++)
-            {
-                if (lowerBorder[i] <= upperBorder[i] && lowerBorder[i] < rndmMatrixSize && upperBorder[i] > 1) 
-                {
-                    indicesX[i] = lowerBorder[i];
-                }
-                else return false;
-            }
-            Initialize();
-            return true;
         }
 
         /// <summary>
@@ -126,7 +112,7 @@ namespace RP_BruteForce
                 i--;
                 if (i < 1)
                 {
-                    Initialize();
+                    InitializeIndices();
                     return false;
                 }
                 indices[i]++;
@@ -175,13 +161,12 @@ namespace RP_BruteForce
         static void LoadPatternMatrix(TextReader sr)
         {
             for (int i = 0; i < PatternMatrix.linesNumber; i++)
-            {
+            {   
                 string inputLine = sr.ReadLine();
                 if(inputLine.Length != PatternMatrix.columnNumber)
                 {
                     throw new FormatException();
                 }
-
                 for (int j = 0; j < PatternMatrix.columnNumber; j++)
                 {
                     if (inputLine[j] != '0')
@@ -227,6 +212,9 @@ namespace RP_BruteForce
                 return true;
             }
         }
+        /// <summary>
+        /// Returns false if the new 1 element was created too close to the matrix border and wished contraction to PatternMatrix element [i][j] is not possible
+        /// </summary>
         static bool DistributionPossible(int randomMatrixLine, int patternLine, int rndmSize, int patternSize)
         {
             if (randomMatrixLine + patternSize - patternLine <= rndmSize &&
@@ -266,7 +254,7 @@ namespace RP_BruteForce
                 {
                     if(i != patternLine || j != patternCol)
                     {
-                        //if there must be a 1 element in specified rectangle
+                        //if there must be a 1 element in specified rectangle (because it is contracted to 1 element on given position of Pattern Matrix)
                         if (PatternMatrix.element[i][j])
                         {
                             if (!CheckRectangle(ld, cd, i, j))
@@ -281,6 +269,7 @@ namespace RP_BruteForce
             //forbidden patern found
             return true;
         }
+
         /// <summary>
         /// Returns true if the new matrix doesn't contain forbidden pattern, otherwise keeps original matrix.
         /// </summary>
@@ -296,42 +285,34 @@ namespace RP_BruteForce
                 LinesDistributor linesDistributor;
                 LinesDistributor columnDistributor;
 
-                for (int i = 0; i < PatternMatrix.linesNumber; i++)
+                for (int i = 0; i < PatternMatrix.linesNumber; i++) 
                 {
                     for (int j = 0; j < PatternMatrix.columnNumber; j++)
                     {
-                        if (PatternMatrix.element[i][j])
+                        if (PatternMatrix.element[i][j]) //tests all distributions where the new 1 element (and it's rectangular neighborhood) is contracted to element [i][j] of PatternMatrix
                         {
                             if (DistributionPossible(rndmLine, i, RndmMatrix.linesNumber, PatternMatrix.linesNumber))
                             {
                                 linesDistributor = new LinesDistributor(RndmMatrix.linesNumber, PatternMatrix.linesNumber - 1, i, rndmLine);
                             }
-                            else goto ENDLines;
+                            else break;
                             if (DistributionPossible(rndmColumn, j, RndmMatrix.columnNumber, PatternMatrix.columnNumber))
                             {
                                 columnDistributor = new LinesDistributor(RndmMatrix.columnNumber, PatternMatrix.columnNumber - 1, j, rndmColumn);
                             }
-                            else goto ENDColumns;
-                            if(linesDistributor.distributionSuccesfull && columnDistributor.distributionSuccesfull) //SMAZAT!!!!!!!!!!!!!!
+                            else continue;
+
+                            //check all possible distributions
+                            do
                             {
-                                do
+                                if (CheckPattern(linesDistributor, columnDistributor, i, j))
                                 {
-                                    do
-                                    {
-                                        if (CheckPattern(linesDistributor, columnDistributor,i,j))
-                                        {
-                                            SwapElement(rndmLine, rndmColumn);
-                                            return false;
-                                        }
-
-                                    } while (columnDistributor.NextPosition());
-
-                                } while (linesDistributor.NextPosition());
-                            }
+                                    SwapElement(rndmLine, rndmColumn); //forbidden pattern found, return to previous matrix
+                                    return false;
+                                }
+                            } while (columnDistributor.NextPosition() || linesDistributor.NextPosition());
                         }
-                        ENDColumns:;
                     }
-                    ENDLines:;
                 }
             }
             return true;
