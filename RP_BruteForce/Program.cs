@@ -810,7 +810,7 @@ namespace RP_BruteForce
 
             if(!loadingFromFile) Console.WriteLine("Enter sizes of pattern matrix.");
 
-            if ((size = LoadMatrixSize(Console.ReadLine())) == null) return;
+            if ((size = LoadMatrixSize(reader.ReadLine())) == null) return;
             else if (size.linesNumber > RndmMatrix.linesNumber || size.columnNumber > RndmMatrix.columnNumber)
             {
                 ReportError("Pattern matrix can't be larger than generating matrix.");
