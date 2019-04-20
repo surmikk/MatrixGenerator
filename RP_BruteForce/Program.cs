@@ -20,6 +20,17 @@ namespace RP_BruteForce
         }
     }
 
+    struct Coordinates
+    {
+        public int line;
+        public int column;
+        public Coordinates(int line, int column)
+        {
+            this.line = line;
+            this.column = column;
+        }
+    }
+
     class Matrix01
     {
         public readonly int linesNumber;
@@ -647,7 +658,7 @@ namespace RP_BruteForce
         /// </summary>
         /// <param name="Distribution of lines"></param>
         /// <param name="Distribution of columns"></param>
-        static bool CheckPattern(LinesDistributor ld, LinesDistributor cd, int patternLine, int patternCol)
+        static Coordinates? CheckPattern(LinesDistributor ld, LinesDistributor cd, int patternLine, int patternCol)
         {
             for (int i = 0; i < PatternMatrix.linesNumber; i++)
             {
@@ -657,21 +668,22 @@ namespace RP_BruteForce
                     {
                         //if there must be a 1 element in specified rectangle (because it is contracted to 1 element on given position of Pattern Matrix)
                         if (PatternMatrix.element[i][j])
-                        {
-
+                        {                           
                             if (!CheckRectangle(ld, cd, i, j))
                             {
                                 //forbidden patern doesn't exist in this distribution
-                                return false;
-                            }
+                                return new Coordinates(i, j);
+                            } 
                         }
                     }
                 }
             }
             //forbidden patern found
-            return true;
+            return null;
         }
 
+        static long success = 0;
+        static long failure = 0;
         /// <summary>
         /// Returns true if the new matrix doesn't contain forbidden pattern, otherwise keeps original matrix.
         /// </summary>
@@ -687,6 +699,8 @@ namespace RP_BruteForce
             {
                 LinesDistributor linesDistributor;
                 LinesDistributor columnDistributor;
+                //position of the rectangle that was empty in the previous iteration, used for prediction. Initialized with null.
+                Coordinates? lastEmptyRect;
 
                 for (int i = 0; i < PatternMatrix.linesNumber; i++) 
                 {
@@ -705,16 +719,30 @@ namespace RP_BruteForce
                             }
                             else continue;
 
-                            //check all possible distributions
+                            //check all possible distributions of randomMatrix
                             do
                             {
-                                if (CheckPattern(linesDistributor, columnDistributor, i, j))
+                                lastEmptyRect = null;
+                                do
                                 {
-                                    SwapElement(rndmLine, rndmColumn); //forbidden pattern found, return to previous matrix
-                                    RepairLineMatrices(rndmLine, rndmColumn, false);
-                                    return false;
-                                }
-                            } while (columnDistributor.NextPosition() || linesDistributor.NextPosition());
+                                    if (lastEmptyRect != null && 
+                                        !CheckRectangle(linesDistributor, columnDistributor, lastEmptyRect.Value.line, lastEmptyRect.Value.column))
+                                    {
+                                        //rectangle on the position that was empty in the last iteration is still empty
+                                        success++;
+                                        continue;
+                                    }
+                                    else if ((lastEmptyRect = CheckPattern(linesDistributor, columnDistributor, i, j)) == null)
+                                    {
+                                        //forbidden pattern found, return to previous matrix
+                                        SwapElement(rndmLine, rndmColumn);
+                                        RepairLineMatrices(rndmLine, rndmColumn, false);
+                                        return false;
+                                    }
+                                    failure++;
+
+                                } while (columnDistributor.NextPosition());
+                            } while (linesDistributor.NextPosition());
                         }
                     }
                 }
@@ -827,6 +855,8 @@ namespace RP_BruteForce
                 sw.Stop();
                 Console.WriteLine(sw.Elapsed);
                 PrintMatrix(RndmMatrix);
+
+                //Console.WriteLine("{0} % prediction success", Math.Round(((double)success / (success + failure)) * 100, 2));
             } while ((entry = Console.ReadLine()) != "end");
         }
     }
