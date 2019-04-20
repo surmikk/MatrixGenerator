@@ -43,10 +43,10 @@ namespace RP_BruteForce
     /// </summary>
     class LineMatrix : Matrix01
     {
-        bool directionLeft;
-        bool directionRight;
-        bool directionUpper;
-        bool directionLower;
+        readonly bool directionLeft;
+        readonly bool directionRight;
+        readonly bool directionUpper;
+        readonly bool directionLower;
         public LineMatrix(MatrixSize size, bool left, bool right, bool upper, bool lower) : base(size)
         {
             directionLeft = left;
@@ -119,8 +119,8 @@ namespace RP_BruteForce
     /// </summary>
     class CornerMatrix : Matrix01
     {
-        bool directionLeft;
-        bool directionUpper;
+        readonly bool directionLeft;
+        readonly bool directionUpper;
         public CornerMatrix(MatrixSize size, bool directionLeft, bool directionUpper) : base(size)
         {
             this.directionLeft = directionLeft;
@@ -390,6 +390,12 @@ namespace RP_BruteForce
 
         static Random rndm = new Random(1);
 
+        static void ReportError(string message)
+        {
+            Console.WriteLine(message + " Press any key to exit.");
+            Console.ReadLine();
+        }
+
         static MatrixSize LoadMatrixSize(string inputLine)
         {
             int linesNumber;
@@ -399,20 +405,23 @@ namespace RP_BruteForce
                 !int.TryParse(tokens[0], out linesNumber) ||
                 !int.TryParse(tokens[1], out columnNumber))
             {
-                Console.WriteLine("Wrong format. Press any key to exit.");
-                Console.ReadLine();
+                ReportError("Wrong format.");
                 return null;
             }
-            if (linesNumber < 1 || columnNumber < 1) return null;
+            if (linesNumber < 1 || columnNumber < 1)
+            {
+                ReportError("Values must be positive.");
+                return null;
+            }
             return new MatrixSize(linesNumber, columnNumber);
         }
 
-        static void LoadPatternMatrix(TextReader sr)
+        static void LoadPatternMatrix(TextReader reader)
         {
             for (int i = 0; i < PatternMatrix.linesNumber; i++)
-            {   
-                string inputLine = sr.ReadLine();
-                if(inputLine.Length != PatternMatrix.columnNumber)
+            {
+                string inputLine = reader.ReadLine();
+                if (inputLine.Length < PatternMatrix.columnNumber)
                 {
                     throw new FormatException();
                 }
@@ -716,90 +725,89 @@ namespace RP_BruteForce
        
         static void Main(string[] args)
         {
-            int iterationsNumber;
             MatrixSize size;
+            int iterationsNumber;
+            bool loadingFromFile = false;
+            TextReader reader;
             if (args.Length > 0)
             {
-                StreamReader sr = new StreamReader(args[0]);
-                string input = sr.ReadLine();
-                size = LoadMatrixSize(input);
-                if (size == null) return;
-                RndmMatrix = new Matrix01(size);
-
-                UpperLeft = new CornerMatrix(size, true, true);
-                UpperRight = new CornerMatrix(size, false, true);
-                LowerLeft = new CornerMatrix(size, true, false);
-                LowerRight = new CornerMatrix(size, false, false);
-
-                Upper = new LineMatrix(size, false, false, true, false);
-                Lower = new LineMatrix(size, false, false, false, true);
-                Left = new LineMatrix(size, true, false, false, false);
-                Right = new LineMatrix(size, false, true, false, false);
-
-                if ((size = LoadMatrixSize(sr.ReadLine())) == null ||
-                    size.linesNumber > RndmMatrix.linesNumber ||
-                    size.columnNumber > RndmMatrix.columnNumber)
+                loadingFromFile = true;
+                try
                 {
+                    reader = new StreamReader(args[0]);
+                }
+                catch(IOException)
+                {
+                    ReportError("Error while opening the file.");
                     return;
                 }
-                PatternMatrix = new Matrix01(size);
-                LoadPatternMatrix(sr);
-                iterationsNumber = int.Parse(sr.ReadLine());
             }
-            else
+            else reader = Console.In;
+
+            if(!loadingFromFile)
             {
                 Console.WriteLine("**Enter \"help\" for illustration of a valid input**");
                 Console.WriteLine("Enter sizes of random matrix.");
-                string input = Console.ReadLine();
-                if (input == "help")
-                {
-                    Console.WriteLine("->Enter sizes of random matrix. (lines \"space\" columns)");
-                    Console.WriteLine("3 5");
-                    Console.WriteLine("->Enter sizes of pattern matrix.");
-                    Console.WriteLine("2 3");
-                    Console.WriteLine("->Enter pattern 01-matrix of given sizes. (every row on a new line, without spaces)");
-                    Console.WriteLine("101");
-                    Console.WriteLine("010");
-                    Console.WriteLine("->Enter number of random iterations.");
-                    Console.WriteLine("200");
-                    Console.WriteLine("**END of the illustration**");
-                    Console.WriteLine();
-                    Console.WriteLine("Enter sizes of random matrix.");
-                    input = Console.ReadLine();
-                    size = LoadMatrixSize(input);
-                }
-                else
-                {
-                    size = LoadMatrixSize(input);
-                }
-                if (size == null) return;
-                RndmMatrix = new Matrix01(size);
-
-                UpperLeft = new CornerMatrix(size, true, true);
-                UpperRight = new CornerMatrix(size, false, true);
-                LowerLeft = new CornerMatrix(size, true, false);
-                LowerRight = new CornerMatrix(size, false, false);
-
-                Upper = new LineMatrix(size, false, false, true, false);
-                Lower = new LineMatrix(size, false, false, false, true);
-                Left = new LineMatrix(size, true, false, false, false);
-                Right = new LineMatrix(size, false, true, false, false);
-
-                Console.WriteLine("Enter sizes of pattern matrix.");
-                if ((size = LoadMatrixSize(Console.ReadLine())) == null ||
-                    size.linesNumber > RndmMatrix.linesNumber ||
-                    size.columnNumber > RndmMatrix.columnNumber)
-                {
-                    return;
-                }
-                PatternMatrix = new Matrix01(size);
-                Console.WriteLine("Enter pattern 01-matrix of given sizes.");
-                LoadPatternMatrix(Console.In);
-
-                Console.WriteLine("Enter number of random iterations.");
-                iterationsNumber = int.Parse(Console.ReadLine());
-                Console.WriteLine("**Enter \"end\" to exit or any key to continue**");
             }
+            string input = reader.ReadLine();
+            if(!loadingFromFile && input == "help")
+            {
+                Console.WriteLine("->Enter sizes of random matrix. (lines \"space\" columns)");
+                Console.WriteLine("3 5");
+                Console.WriteLine("->Enter sizes of pattern matrix.");
+                Console.WriteLine("2 3");
+                Console.WriteLine("->Enter pattern 01-matrix of given sizes. (every row on a new line, without spaces)");
+                Console.WriteLine("101");
+                Console.WriteLine("010");
+                Console.WriteLine("->Enter number of random iterations.");
+                Console.WriteLine("200");
+                Console.WriteLine("**END of the illustration**");
+                Console.WriteLine();
+                Console.WriteLine("Enter sizes of random matrix.");
+                input = reader.ReadLine();
+            }
+            if ((size = LoadMatrixSize(input)) == null) return;
+
+            RndmMatrix = new Matrix01(size);
+
+            UpperLeft = new CornerMatrix(size, true, true);
+            UpperRight = new CornerMatrix(size, false, true);
+            LowerLeft = new CornerMatrix(size, true, false);
+            LowerRight = new CornerMatrix(size, false, false);
+
+            Upper = new LineMatrix(size, false, false, true, false);
+            Lower = new LineMatrix(size, false, false, false, true);
+            Left = new LineMatrix(size, true, false, false, false);
+            Right = new LineMatrix(size, false, true, false, false);
+
+            if(!loadingFromFile) Console.WriteLine("Enter sizes of pattern matrix.");
+
+            if ((size = LoadMatrixSize(Console.ReadLine())) == null) return;
+            else if (size.linesNumber > RndmMatrix.linesNumber || size.columnNumber > RndmMatrix.columnNumber)
+            {
+                ReportError("Pattern matrix can't be larger than generating matrix.");
+                return;
+            }
+
+            PatternMatrix = new Matrix01(size);
+            if(!loadingFromFile) Console.WriteLine("Enter pattern 01-matrix of given sizes.");
+            try
+            {
+                LoadPatternMatrix(reader);
+            }
+            catch (FormatException)
+            {
+                ReportError("The row is too short.");
+                return;
+            }
+
+            if (!loadingFromFile) Console.WriteLine("Enter number of random iterations.");
+            if (!int.TryParse(reader.ReadLine(), out iterationsNumber) || iterationsNumber < 1)
+            {
+                ReportError("Wrong format of integer.");
+                return;
+            }
+            Console.WriteLine("**Enter \"end\" to exit or any key to continue**");
 
             Stopwatch sw = new Stopwatch();
 
@@ -819,18 +827,6 @@ namespace RP_BruteForce
                 sw.Stop();
                 Console.WriteLine(sw.Elapsed);
                 PrintMatrix(RndmMatrix);
-
-                /*/
-                Console.WriteLine();
-                Console.WriteLine("UpperMatrix:");
-                PrintMatrix(Upper);
-                Console.WriteLine("RightMatrix:");
-                PrintMatrix(Right);
-                Console.WriteLine("LowerMatrix:");
-                PrintMatrix(Lower);
-                Console.WriteLine("LeftMatrix:");
-                PrintMatrix(Left);
-                /**/
             } while ((entry = Console.ReadLine()) != "end");
         }
     }
