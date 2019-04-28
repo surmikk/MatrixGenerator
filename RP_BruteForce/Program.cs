@@ -36,15 +36,15 @@ namespace RP_BruteForce
         public readonly int linesNumber;
         public readonly int columnNumber;
         public int numberOf1;
-        public BitArray[] element;
+        public bool[][] element;
         public Matrix01(MatrixSize size)
         {
             linesNumber = size.linesNumber;
             columnNumber = size.columnNumber;
-            element = new BitArray[linesNumber];
+            element = new bool[linesNumber][];
             for (int i = 0; i < linesNumber; i++)
-            {
-                element[i] = new BitArray(columnNumber, false);
+            { 
+                 element[i] = new bool[columnNumber];
             }
         }
     }
@@ -539,7 +539,7 @@ namespace RP_BruteForce
         {
             int cdMax = cd.indices.Length - 2;
             int ldMax = ld.indices.Length - 2;
-
+            
             //using CornerMatrices and LineMatrices
             if (lineNum == 0)
             {
@@ -856,7 +856,6 @@ namespace RP_BruteForce
                 Console.WriteLine(sw.Elapsed);
                 PrintMatrix(RndmMatrix);
 
-                //Console.WriteLine("{0} % prediction success", Math.Round(((double)success / (success + failure)) * 100, 2));
             } while ((entry = Console.ReadLine()) != "end");
         }
     }
