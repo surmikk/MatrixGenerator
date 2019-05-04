@@ -20,291 +20,40 @@ namespace RP_BruteForce
         }
     }
 
-    struct Coordinates
-    {
-        public int line;
-        public int column;
-        public Coordinates(int line, int column)
-        {
-            this.line = line;
-            this.column = column;
-        }
-    }
-
-    class Matrix01
+    class Matrix<T>
     {
         public readonly int linesNumber;
         public readonly int columnNumber;
+        public T[][] element;
         public int numberOf1;
-        public bool[][] element;
-        public Matrix01(MatrixSize size)
+        public Matrix(MatrixSize size)
         {
             linesNumber = size.linesNumber;
             columnNumber = size.columnNumber;
-            element = new bool[linesNumber][];
+            element = new T[linesNumber][];
             for (int i = 0; i < linesNumber; i++)
             {
-                element[i] = new bool[columnNumber];
+                element[i] = new T[columnNumber];
             }
         }
-        public Matrix01(Matrix01 originalMatrix)
+        public Matrix(Matrix<T> originalMatrix)
         {
             linesNumber = originalMatrix.linesNumber;
             columnNumber = originalMatrix.columnNumber;
-            element = new bool[linesNumber][];
+            element = new T[linesNumber][];
             for (int i = 0; i < linesNumber; i++)
             {
-                element[i] = new bool[columnNumber];
+                element[i] = new T[columnNumber];
             }
             for (int i = 0; i < linesNumber; i++)
             {
-                for(int j = 0; j < columnNumber; j++)
+                for (int j = 0; j < columnNumber; j++)
                 {
                     element[i][j] = originalMatrix.element[i][j];
                 }
             }
         }
-    }
-
-    /// <summary>
-    /// Element [i][j] is true if and only if the line in RndmMatrix beginning in this element in the given direction contains an 1
-    /// </summary>
-    class LineMatrix : Matrix01
-    {
-        readonly bool directionLeft;
-        readonly bool directionRight;
-        readonly bool directionUpper;
-        readonly bool directionLower;
-        public LineMatrix(MatrixSize size, bool left, bool right, bool upper, bool lower) : base(size)
-        {
-            directionLeft = left;
-            directionRight = right;
-            directionUpper = upper;
-            directionLower = lower;
-        }
-        public void Add1ToLine(int line, int column)
-        {
-            if (directionLeft)
-            {
-                for (int j = column; j < columnNumber; j++) { element[line][j] = true; }
-            }
-            if (directionRight)
-            {
-                for (int j = 0; j <= column; j++) { element[line][j] = true; }
-            }
-            if (directionUpper)
-            {
-                for (int i = line; i < linesNumber; i++) { element[i][column] = true; }
-            }
-            if (directionLower)
-            {
-                for (int i = 0; i <= line; i++) { element[i][column] = true; }
-            }
-        }
-        public void Remove1FromLine(int line, int column, Matrix01 rndmMatrix)
-        {
-            if (directionLeft)
-            {
-                int j = 0;
-                while (j < columnNumber && !rndmMatrix.element[line][j])
-                {
-                    element[line][j] = false;
-                    j++;
-                }
-            }
-            if (directionRight)
-            {
-                int j = columnNumber - 1;
-                while (j >= 0 && !rndmMatrix.element[line][j])
-                {
-                    element[line][j] = false;
-                    j--;
-                }
-            }
-            if (directionUpper)
-            {
-                int i = 0;
-                while (i < linesNumber && !rndmMatrix.element[i][column])
-                {
-                    element[i][column] = false;
-                    i++;
-                }
-            }
-            if (directionLower)
-            {
-                int i = linesNumber - 1;
-                while (i >= 0 && !rndmMatrix.element[i][column])
-                {
-                    element[i][column] = false;
-                    i--;
-                }
-            }
-        }
-    }
-    
-    /// <summary>
-    /// Element [i][j] is true if and only if the rectangle in RndmMatrix beginning in this element and ending in a corner depending on given directions contains an 1
-    /// </summary>
-    class CornerMatrix : Matrix01
-    {
-        readonly bool directionLeft;
-        readonly bool directionUpper;
-        public CornerMatrix(MatrixSize size, bool directionLeft, bool directionUpper) : base(size)
-        {
-            this.directionLeft = directionLeft;
-            this.directionUpper = directionUpper;
-        }
-        /// <summary>
-        /// Repairs corner matrix after adding 1 element to RndmMatrix
-        /// </summary>
-        public void SetCornerTo1(int line, int col)
-        {
-            if (element[line][col]) return;
-            int i = line;
-            while (i >= 0 && i < linesNumber)
-            {
-                int j = col;
-                while (j >= 0 && j < columnNumber && !element[i][j])
-                {
-                    element[i][j] = true;
-                    if (directionLeft)
-                    {
-                        j++;
-                    }
-                    else j--;
-                }
-                if (directionUpper)
-                {
-                    i++;
-                }
-                else i--;
-            }
-        }
-        /// <summary>
-        /// Repairs corner matrix after deleting 1 element from RndmMatrix
-        /// </summary>
-        public void SetCornerTo0(int m, int n, Matrix01 rndmMatrix)
-        {
-            if (directionLeft)
-            {
-                if (directionUpper)
-                {
-                    if (m > 0 && n > 0)
-                    {
-                        if (element[m - 1][n] || element[m][n - 1])
-                        {
-                            return;
-                        }
-                    }
-                    int i = 0;
-                    while (i < linesNumber)
-                    {
-                        int j = 0;
-                        while (j < columnNumber && !rndmMatrix.element[i][j])
-                        {
-                            if (i > 0 && element[i - 1][j])
-                            {
-                                break;
-                            }
-                            else
-                            {
-                                element[i][j] = false;
-                            }
-                            j++;
-                        }
-                        i++;
-                    }
-                }
-                else
-                {
-                    if (m < linesNumber - 1 && n > 0)
-                    {
-                        if (element[m + 1][n] || element[m][n - 1])
-                        {
-                            return;
-                        }
-                    }
-                    int i = linesNumber - 1;
-                    while (i >= 0)
-                    {
-                        int j = 0;
-                        while (j < columnNumber && !rndmMatrix.element[i][j])
-                        {
-                            if (i < linesNumber - 1 && element[i + 1][j])
-                            {
-                                break;
-                            }
-                            else
-                            {
-                                element[i][j] = false;
-                            }
-                            j++;
-                        }
-                        i--;
-                    }
-                }
-            }
-            else
-            {
-                if (directionUpper)
-                {
-                    if (m > 0 && n < columnNumber - 1)
-                    {
-                        if (element[m - 1][n] || element[m][n + 1])
-                        {
-                            return;
-                        }
-                    }
-                    int i = 0;
-                    while (i < linesNumber)
-                    {
-                        int j = columnNumber - 1;
-                        while (j >= 0 && !rndmMatrix.element[i][j])
-                        {
-                            if (i > 0 && element[i - 1][j])
-                            {
-                                break;
-                            }
-                            else
-                            {
-                                element[i][j] = false;
-                            }
-                            j--;
-                        }
-                        i++;
-                    }
-                }
-                else
-                {
-                    if (m < linesNumber - 1 && n < columnNumber - 1)
-                    {
-                        if (element[m + 1][n] || element[m][n + 1])
-                        {
-                            return;
-                        }
-                    }
-                    int i = linesNumber - 1;
-                    while (i >= 0)
-                    {
-                        int j = columnNumber - 1;
-                        while (j >= 0 && !rndmMatrix.element[i][j])
-                        {
-                            if (i < linesNumber - 1 && element[i + 1][j])
-                            {
-                                break;
-                            }
-                            else
-                            {
-                                element[i][j] = false;
-                            }
-                            j--;
-                        }
-                        i--;
-                    }
-                }
-            }
-        }
-    }
+    }  
 
     class Distributor
     {
@@ -449,7 +198,7 @@ namespace RP_BruteForce
         /// For every possible line distribution tries to find forbidden pattern
         /// </summary>
         /// <returns></returns>
-        public bool FindPattern()
+        public bool TryFindPattern()
         {
             do
             {
@@ -571,30 +320,18 @@ namespace RP_BruteForce
     /// </summary>
     class Context
     {
-        public Matrix01 RndmMatrix;
-        public Matrix01 PatternMatrix;
-        public CornerMatrix UpperLeft;
-        public CornerMatrix UpperRight;
-        public CornerMatrix LowerLeft;
-        public CornerMatrix LowerRight;
-        public LineMatrix Upper;
-        public LineMatrix Lower;
-        public LineMatrix Left;
-        public LineMatrix Right;
+        public Matrix<bool> RndmMatrix;
+        public Matrix<bool> PatternMatrix;
+        /// <summary>
+        /// element[i][j] contains sum of all 1 in the left-upper direction from this position
+        /// </summary>
+        public Matrix<int> CountingMatrix;
 
-        public Context(Matrix01 RandomMatrix, Matrix01 PatternMatrix, CornerMatrix UpperLeft, CornerMatrix UpperRight, CornerMatrix LowerLeft, CornerMatrix LowerRight,
-            LineMatrix Upper, LineMatrix Lower, LineMatrix Left, LineMatrix Right)
+        public Context(Matrix<bool> RandomMatrix, Matrix<bool> PatternMatrix, Matrix<int> matrix)
         {
             RndmMatrix = RandomMatrix;
             this.PatternMatrix = PatternMatrix;
-            this.UpperLeft = UpperLeft;
-            this.UpperRight = UpperRight;
-            this.LowerLeft = LowerLeft;
-            this.LowerRight = LowerRight;
-            this.Upper = Upper;
-            this.Lower = Lower;
-            this.Left = Left;
-            this.Right = Right;
+            this.CountingMatrix = matrix;
         }
 
         public bool SwapElement(int i, int j)
@@ -603,55 +340,30 @@ namespace RP_BruteForce
             {
                 RndmMatrix.element[i][j] = false;
                 RndmMatrix.numberOf1--;
-                RepairCornerMatrices(i, j, false);
-                RepairLineMatrices(i, j, false);
+                RepairCountingMatrix(i, j, false);
                 return false;
             }
             else
             {
                 RndmMatrix.element[i][j] = true;
                 RndmMatrix.numberOf1++;
-                RepairCornerMatrices(i, j, true);
-                RepairLineMatrices(i, j, true);
+                RepairCountingMatrix(i, j, true);
                 return true;
             }
         }
 
-        void RepairLineMatrices(int i, int j, bool element1Created)
+        void RepairCountingMatrix(int x, int y, bool element1Created)
         {
-
-            if (!element1Created)
+            for (int i = x; i < CountingMatrix.linesNumber; i++)
             {
-                //element 1 removed
-                Left.Remove1FromLine(i, j, RndmMatrix);
-                Right.Remove1FromLine(i, j, RndmMatrix);
-                Upper.Remove1FromLine(i, j, RndmMatrix);
-                Lower.Remove1FromLine(i, j, RndmMatrix);
-            }
-            else
-            {
-                Left.Add1ToLine(i, j);
-                Right.Add1ToLine(i, j);
-                Upper.Add1ToLine(i, j);
-                Lower.Add1ToLine(i, j);
-            }
-        }
-
-        void RepairCornerMatrices(int i, int j, bool element1Created)
-        {
-            if (element1Created)
-            {
-                UpperLeft.SetCornerTo1(i, j);
-                UpperRight.SetCornerTo1(i, j);
-                LowerLeft.SetCornerTo1(i, j);
-                LowerRight.SetCornerTo1(i, j);
-            }
-            else
-            {
-                UpperLeft.SetCornerTo0(i, j, RndmMatrix);
-                UpperRight.SetCornerTo0(i, j, RndmMatrix);
-                LowerLeft.SetCornerTo0(i, j, RndmMatrix);
-                LowerRight.SetCornerTo0(i, j, RndmMatrix);
+                for (int j = y; j < CountingMatrix.columnNumber; j++)
+                {
+                    if (element1Created)
+                    {
+                        CountingMatrix.element[i][j]++;
+                    }
+                    else CountingMatrix.element[i][j]--;
+                }
             }
         }
 
@@ -660,136 +372,49 @@ namespace RP_BruteForce
         /// </summary>
         public bool CheckRectangle(int[] lineIndices, int[] columnIndices, int lineNum, int colNum)
         {
-            int cdMax = columnIndices.Length - 2;
-            int ldMax = lineIndices.Length - 2;
-
-            //using CornerMatrices and LineMatrices
+            int numberOf1InRectangle = 0;
             if (lineNum == 0)
             {
+                //left upper rectangle
                 if (colNum == 0)
                 {
-                    if (UpperLeft.element[lineIndices[1] - 1][columnIndices[1] - 1])
-                    {
-                        return true;
-                    }
-                    else return false;
+                    numberOf1InRectangle = CountingMatrix.element[lineIndices[1] - 1][columnIndices[1] - 1];
                 }
-                else if (colNum == PatternMatrix.columnNumber - 1)
+                else
                 {
-                    if (UpperRight.element[lineIndices[1] - 1][columnIndices[cdMax]])
-                    {
-                        return true;
-                    }
-                    else return false;
+                    //upper rectangles
+                    numberOf1InRectangle = CountingMatrix.element[lineIndices[1] - 1][columnIndices[colNum + 1] - 1]
+                                         - CountingMatrix.element[lineIndices[1] - 1][columnIndices[colNum] - 1];
                 }
-                else if (UpperLeft.element[lineIndices[1] - 1][columnIndices[colNum + 1] - 1] && UpperRight.element[lineIndices[1] - 1][columnIndices[colNum]])
-                {
-                    for (int j = columnIndices[colNum]; j < columnIndices[colNum + 1]; j++)
-                    {
-                        if (Upper.element[lineIndices[1] - 1][j]) return true;
-                    }
-                    return false;
-                }
-                else return false;
             }
-            if (lineNum == PatternMatrix.linesNumber - 1)
+            else if (colNum == 0)
             {
-                if (colNum == 0)
-                {
-                    if (LowerLeft.element[lineIndices[ldMax]][columnIndices[1] - 1])
-                    {
-                        return true;
-                    }
-                    else return false;
-                }
-                else if (colNum == PatternMatrix.columnNumber - 1)
-                {
-                    if (LowerRight.element[lineIndices[ldMax]][columnIndices[cdMax]])
-                    {
-                        return true;
-                    }
-                    else return false;
-                }
-                else if (LowerLeft.element[lineIndices[ldMax]][columnIndices[colNum + 1] - 1] && LowerRight.element[lineIndices[ldMax]][columnIndices[colNum]])
-                {
-                    for (int j = columnIndices[colNum]; j < columnIndices[colNum + 1]; j++)
-                    {
-                        if (Lower.element[lineIndices[ldMax]][j]) return true;
-                    }
-                    return false;
-                }
-                else return false;
-            }
-            if (colNum == 0)
-            {
-                if (UpperLeft.element[lineIndices[lineNum + 1] - 1][columnIndices[1] - 1] && LowerLeft.element[lineIndices[lineNum]][columnIndices[1] - 1])
-                {
-                    for (int i = lineIndices[lineNum]; i < lineIndices[lineNum + 1]; i++)
-                    {
-                        if (Left.element[i][columnIndices[1] - 1]) return true;
-                    }
-                    return false;
-                }
-                else return false;
-            }
-            if (colNum == PatternMatrix.columnNumber - 1)
-            {
-                if (UpperRight.element[lineIndices[lineNum + 1] - 1][columnIndices[cdMax]] && LowerRight.element[lineIndices[lineNum]][columnIndices[cdMax]])
-                {
-                    for (int i = lineIndices[lineNum]; i < lineIndices[lineNum + 1]; i++)
-                    {
-                        if (Right.element[i][columnIndices[cdMax]]) return true;
-                    }
-                    return false;
-                }
-                else return false;
-            }
-
-            //inner rectangle check
-            if (lineIndices[lineNum + 1] - lineIndices[lineNum] < columnIndices[colNum + 1] - columnIndices[colNum]) //rectangle is wide
-            {
-                for (int i = lineIndices[lineNum]; i < lineIndices[lineNum + 1]; i++)
-                {
-                    if (Right.element[i][columnIndices[colNum]] && !Right.element[i][columnIndices[colNum + 1]]) return true;
-                    if (!Left.element[i][columnIndices[colNum] - 1] && Left.element[i][columnIndices[colNum + 1] - 1]) return true;
-                }
+                //left rectangles
+                numberOf1InRectangle = CountingMatrix.element[lineIndices[lineNum + 1] - 1][columnIndices[1] - 1]
+                                     - CountingMatrix.element[lineIndices[lineNum] - 1][columnIndices[1] - 1];
             }
             else
             {
-                for (int j = columnIndices[colNum]; j < columnIndices[colNum + 1]; j++)
-                {
-                    if (Lower.element[lineIndices[lineNum]][j] && !Lower.element[lineIndices[lineNum + 1]][j]) return true;
-                    if (!Upper.element[lineIndices[lineNum] - 1][j] && Upper.element[lineIndices[lineNum + 1] - 1][j]) return true;
-                }
+                //other possibilities
+                numberOf1InRectangle = CountingMatrix.element[lineIndices[lineNum + 1] - 1][columnIndices[colNum + 1] - 1]
+                                     - CountingMatrix.element[lineIndices[lineNum + 1] - 1][columnIndices[colNum] - 1]
+                                     - CountingMatrix.element[lineIndices[lineNum] - 1][columnIndices[colNum + 1] - 1]
+                                     + CountingMatrix.element[lineIndices[lineNum] - 1][columnIndices[colNum] - 1];
             }
 
-            //searching element by element in case that previous check is not succesfull
-            for (int i = lineIndices[lineNum]; i < lineIndices[lineNum + 1]; i++)
+            if (numberOf1InRectangle > 0)
             {
-                for (int j = columnIndices[colNum]; j < columnIndices[colNum + 1]; j++)
-                {
-                    if (RndmMatrix.element[i][j])
-                    {
-                        return true;
-                    }
-                }
+                return true;
             }
-            return false;
+            else return false;
         }
     }
 
     class Program
     {
-        static Matrix01 RndmMatrix;
-        static Matrix01 PatternMatrix;
-        static CornerMatrix UpperLeft;
-        static CornerMatrix UpperRight;
-        static CornerMatrix LowerLeft;
-        static CornerMatrix LowerRight;
-        static LineMatrix Upper;
-        static LineMatrix Lower;
-        static LineMatrix Left;
-        static LineMatrix Right;
+        static Matrix<bool> RndmMatrix;
+        static Matrix<bool> PatternMatrix;
+        static Matrix<int> CountingMatrix;
 
         static Random rndm = new Random(1);
 
@@ -839,7 +464,7 @@ namespace RP_BruteForce
             }
         }
 
-        static void PrintMatrix(Matrix01 matrix)
+        static void PrintMatrix(Matrix<bool> matrix)
         {
             for (int i = 0; i < matrix.linesNumber; i++)
             {
@@ -889,7 +514,7 @@ namespace RP_BruteForce
                             continue;
                         }
 
-                        if (distributor.FindPattern())
+                        if (distributor.TryFindPattern())
                         {
                             // forbidden pattern found
                             context.SwapElement(rndmLine, rndmColumn);
@@ -947,17 +572,8 @@ namespace RP_BruteForce
             }
             if ((size = LoadMatrixSize(input)) == null) return;
 
-            RndmMatrix = new Matrix01(size);
-
-            UpperLeft = new CornerMatrix(size, true, true);
-            UpperRight = new CornerMatrix(size, false, true);
-            LowerLeft = new CornerMatrix(size, true, false);
-            LowerRight = new CornerMatrix(size, false, false);
-
-            Upper = new LineMatrix(size, false, false, true, false);
-            Lower = new LineMatrix(size, false, false, false, true);
-            Left = new LineMatrix(size, true, false, false, false);
-            Right = new LineMatrix(size, false, true, false, false);
+            RndmMatrix = new Matrix<bool>(size);
+            CountingMatrix = new Matrix<int>(size);
 
             if (!loadingFromFile) Console.WriteLine("Enter sizes of pattern matrix.");
 
@@ -968,7 +584,7 @@ namespace RP_BruteForce
                 return;
             }
 
-            PatternMatrix = new Matrix01(size);
+            PatternMatrix = new Matrix<bool>(size);
             if (!loadingFromFile) Console.WriteLine("Enter pattern 01-matrix of given sizes.");
             try
             {
@@ -990,7 +606,7 @@ namespace RP_BruteForce
 
             Stopwatch sw = new Stopwatch();
 
-            Context context = new Context(RndmMatrix, PatternMatrix, UpperLeft, UpperRight, LowerLeft, LowerRight, Upper, Lower, Left, Right);
+            Context context = new Context(RndmMatrix, PatternMatrix, CountingMatrix);
             while (PatternMatrix.numberOf1 > RndmMatrix.numberOf1)
             {
                 ChangeAndTestMatrix(context);
