@@ -416,6 +416,7 @@ namespace RP_BruteForce
         static Matrix<bool> PatternMatrix;
         static Matrix<int> CountingMatrix;
 
+        static bool transpositionIsNeeded = false;
         static Random rndm = new Random(1);
 
         static void ReportError(string message)
@@ -464,22 +465,56 @@ namespace RP_BruteForce
             }
         }
 
-        static void PrintMatrix(Matrix<bool> matrix)
+        static Matrix<bool> TransposeMatrix(Matrix<bool> matrix)
         {
+            Matrix<bool> result = new Matrix<bool>(new MatrixSize(matrix.columnNumber, matrix.linesNumber));
             for (int i = 0; i < matrix.linesNumber; i++)
             {
                 for (int j = 0; j < matrix.columnNumber; j++)
                 {
-                    if (matrix.element[i][j] == true)
-                    {
-                        Console.Write("1");
-                    }
-                    else
-                    {
-                        Console.Write("0");
-                    }
+                    result.element[j][i] = matrix.element[i][j];
                 }
-                Console.WriteLine();
+            }
+            return result;
+        }
+
+        static void PrintMatrix(Matrix<bool> matrix)
+        {
+            if(transpositionIsNeeded)
+            {
+                for (int j = 0; j < matrix.columnNumber; j++)
+                {
+                    for (int i = 0; i < matrix.linesNumber; i++)
+                    {
+                        if (matrix.element[i][j] == true)
+                        {
+                            Console.Write("1");
+                        }
+                        else
+                        {
+                            Console.Write("0");
+                        }
+                    }
+                    Console.WriteLine();
+                }
+            }
+            else
+            {
+                for (int i = 0; i < matrix.linesNumber; i++)
+                {
+                    for (int j = 0; j < matrix.columnNumber; j++)
+                    {
+                        if (matrix.element[i][j] == true)
+                        {
+                            Console.Write("1");
+                        }
+                        else
+                        {
+                            Console.Write("0");
+                        }
+                    }
+                    Console.WriteLine();
+                }
             }
         }
 
@@ -594,6 +629,16 @@ namespace RP_BruteForce
             {
                 ReportError("The row is too short.");
                 return;
+            }
+
+            // transpose matrix in case the pattern has more rows than columns
+            if(PatternMatrix.linesNumber > PatternMatrix.columnNumber)
+            {
+                MatrixSize transposedSize = new MatrixSize(RndmMatrix.columnNumber, RndmMatrix.linesNumber);
+                RndmMatrix = new Matrix<bool>(transposedSize);
+                CountingMatrix = new Matrix<int>(transposedSize);
+                PatternMatrix = TransposeMatrix(PatternMatrix);
+                transpositionIsNeeded = true;
             }
 
             if (!loadingFromFile) Console.WriteLine("Enter number of random iterations.");
