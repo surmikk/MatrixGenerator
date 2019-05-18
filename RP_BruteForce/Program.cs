@@ -53,7 +53,7 @@ namespace RP_BruteForce
                 }
             }
         }
-    }  
+    }
 
     class Distributor
     {
@@ -116,7 +116,7 @@ namespace RP_BruteForce
                     }
                 }
             }
-            
+
             /// <summary>
             /// Tries to make another distribution. Returns false if there isn't another distribution
             /// </summary>
@@ -200,15 +200,155 @@ namespace RP_BruteForce
         /// <returns></returns>
         public bool TryFindPattern()
         {
-            do
+            if (SetBordersToLineSeparators())
             {
-                if(MoveWithColumnSeparators())
+                // checking all possible positions of line separators 
+                do
                 {
-                    return true;
+                    if (MoveWithColumnSeparators())
+                    {
+                        //for the current line distribution can be column separators moved to positions so that the divided matrix contains forbiden pattern
+                        return true;
+                    }
                 }
-            } while (linesDistributor.NextPosition());
-
+                while (linesDistributor.NextPosition());
+            }
             return false;
+        }
+
+        /// <summary>
+        /// Returns true if there exists a valid position of line separators (otherwise forbiden pattern doesn't exist)
+        /// </summary>
+        bool SetBordersToLineSeparators()
+        {
+            // auxiliary indices that contains lower and upper borders of each position of column distributor
+            // lb(i) ... lowerBorder of the i-th column (counted from 0)
+            // up(i) ... upperBorder of the i-th column - 1
+
+            // lb(0), ub(1), lb(2), ub(3),...
+            int[] evenColumnIndices = new int[columnDistributor.indices.Length];
+            // 0    , lb(1), ub(2), lb(3), ub(4),...
+            int[] oddColumnIndices = new int[columnDistributor.indices.Length];
+            // adding necessary auxiliary value to a unused position of colDistr.upperBorder
+            columnDistributor.upperBorder[columnDistributor.upperBorder.Length - 1] = columnDistributor.upperBorder[columnDistributor.upperBorder.Length - 2] + 1;
+            for (int i = 0; i < columnDistributor.indices.Length - 1; i++)
+            {
+                if (i % 2 == 0)
+                {
+                    evenColumnIndices[i] = columnDistributor.lowerBorder[i];
+                    evenColumnIndices[i + 1] = columnDistributor.upperBorder[i + 1] - 1;
+                }
+                else
+                {
+                    oddColumnIndices[i] = columnDistributor.lowerBorder[i];
+                    oddColumnIndices[i + 1] = columnDistributor.upperBorder[i + 1] - 1;
+                }
+            }
+            // setting lower borders
+            {
+                int[] auxiliaryLineIndices = new int[linesDistributor.lowerBorder.Length];
+                Array.Copy(linesDistributor.lowerBorder, auxiliaryLineIndices, linesDistributor.lowerBorder.Length);
+
+                bool contains1;
+                // moving from the top to the bottom
+                for (int i = 0; i < context.PatternMatrix.linesNumber; i++)
+                {
+                    auxiliaryLineIndices[i + 1] = Maximum(linesDistributor.lowerBorder[i + 1], auxiliaryLineIndices[i] + 1);
+                    for (int j = 0; j < context.PatternMatrix.columnNumber; j++)
+                    {
+                        if (context.PatternMatrix.element[i][j])
+                        {
+                            //moving separator down if neighter the biggest possible rectangle doesn't contain any 1 element
+                            while (auxiliaryLineIndices[i + 1] < linesDistributor.upperBorder[i + 1])
+                            {
+                                if (j % 2 == 0)
+                                {
+                                    contains1 = context.CheckRectangle(auxiliaryLineIndices, evenColumnIndices, i, j);
+                                }
+                                else
+                                {
+                                    contains1 = context.CheckRectangle(auxiliaryLineIndices, oddColumnIndices, i, j);
+                                }
+
+                                if (contains1)
+                                {
+                                    break;
+                                }
+                                else
+                                {
+                                    auxiliaryLineIndices[i + 1]++;
+                                }
+                            }
+                        }
+                    }
+                    if (auxiliaryLineIndices[i + 1] == linesDistributor.upperBorder[i + 1])
+                    {
+                        // the (i+1)-th separator was moved to the last possible possition but still the (i+1)-th column doesn't contain any 1
+                        return false;
+                    }
+                }
+                // separators can be moved to valid positions
+                linesDistributor.lowerBorder = auxiliaryLineIndices;
+            }
+
+            // setting upper borders
+            // very similar to setting lower border, the defference is caused by the difference between values saved in lower- and upper-borders
+            {
+                int[] auxiliaryLineIndices = new int[linesDistributor.upperBorder.Length];
+                for (int i = 1; i < auxiliaryLineIndices.Length - 1; i++)
+                {
+                    auxiliaryLineIndices[i] = linesDistributor.upperBorder[i] - 1;
+                }
+                auxiliaryLineIndices[auxiliaryLineIndices.Length - 1] = linesDistributor.indices[linesDistributor.indices.Length - 1];
+
+                bool contains1;
+                //moving separators,from the first to the last, to the right as much as necessary
+                for (int i = context.PatternMatrix.linesNumber - 1; i >= 0; i--)
+                {
+                    if (i != context.PatternMatrix.linesNumber - 1)
+                    {
+                        auxiliaryLineIndices[i] = Minimum(linesDistributor.upperBorder[i] - 1, auxiliaryLineIndices[i + 1] - 1);
+                    }
+                    for (int j = 0; j < context.PatternMatrix.columnNumber; j++)
+                    {
+                        if (context.PatternMatrix.element[i][j])
+                        {
+                            while (auxiliaryLineIndices[i] >= linesDistributor.lowerBorder[i])
+                            {
+                                if (j % 2 == 0)
+                                {
+                                    contains1 = context.CheckRectangle(auxiliaryLineIndices, evenColumnIndices, i, j);
+                                }
+                                else
+                                {
+                                    contains1 = context.CheckRectangle(auxiliaryLineIndices, oddColumnIndices, i, j);
+                                }
+
+                                if (contains1)
+                                {
+                                    break;
+                                }
+                                else
+                                {
+                                    auxiliaryLineIndices[i]--;
+                                }
+                            }
+                        }
+                    }
+                    if (auxiliaryLineIndices[i + 1] < linesDistributor.lowerBorder[i + 1])
+                    {
+                        // the separator was moved too far and still the biggest possible rectangle doesn't contain any 1
+                        return false;
+                    }
+                }
+                // separators can be moved to valid position
+                for (int i = 1; i < auxiliaryLineIndices.Length - 1; i++)
+                {
+                    linesDistributor.upperBorder[i] = auxiliaryLineIndices[i] + 1;
+                }
+                linesDistributor.InitializeIndices();
+                return true;
+            }
         }
 
         /// <summary>
@@ -218,7 +358,7 @@ namespace RP_BruteForce
         bool MoveWithColumnSeparators()
         {
             Array.Copy(originalColDistUpperBorder, columnDistributor.upperBorder, originalColDistUpperBorder.Length);
-            int [] auxiliaryColumnIndices = new int[originalColDistLowerBorder.Length];
+            int[] auxiliaryColumnIndices = new int[originalColDistLowerBorder.Length];
             Array.Copy(originalColDistLowerBorder, auxiliaryColumnIndices, originalColDistLowerBorder.Length);
 
             //sets last separator most right
@@ -231,7 +371,7 @@ namespace RP_BruteForce
                 {
                     while (auxiliaryColumnIndices[auxiliaryColumnIndices.Length - 2] >= originalColDistLowerBorder[originalColDistLowerBorder.Length - 2])
                     {
-                        if(context.CheckRectangle(linesDistributor.indices, auxiliaryColumnIndices, i, context.PatternMatrix.columnNumber - 1))
+                        if (context.CheckRectangle(linesDistributor.indices, auxiliaryColumnIndices, i, context.PatternMatrix.columnNumber - 1))
                         {
                             break;
                         }
@@ -250,7 +390,7 @@ namespace RP_BruteForce
 
             // set correct upper borders for other separators
             columnDistributor.upperBorder[columnDistributor.upperBorder.Length - 2] = auxiliaryColumnIndices[auxiliaryColumnIndices.Length - 2] + 1;
-            for (int i = columnDistributor.upperBorder.Length - 3; i > 0; i--) 
+            for (int i = columnDistributor.upperBorder.Length - 3; i > 0; i--)
             {
                 columnDistributor.upperBorder[i] = Minimum(columnDistributor.upperBorder[i + 1] - 1, originalColDistUpperBorder[i]);
             }
@@ -375,9 +515,9 @@ namespace RP_BruteForce
             int numberOf1InRectangle = 0;
             if (lineNum == 0)
             {
-                //left upper rectangle
                 if (colNum == 0)
                 {
+                    //left upper rectangle
                     numberOf1InRectangle = CountingMatrix.element[lineIndices[1] - 1][columnIndices[1] - 1];
                 }
                 else
@@ -480,7 +620,7 @@ namespace RP_BruteForce
 
         static void PrintMatrix(Matrix<bool> matrix)
         {
-            if(transpositionIsNeeded)
+            if (transpositionIsNeeded)
             {
                 for (int j = 0; j < matrix.columnNumber; j++)
                 {
@@ -632,7 +772,7 @@ namespace RP_BruteForce
             }
 
             // transpose matrix in case the pattern has more rows than columns
-            if(PatternMatrix.linesNumber > PatternMatrix.columnNumber)
+            if (PatternMatrix.linesNumber > PatternMatrix.columnNumber)
             {
                 MatrixSize transposedSize = new MatrixSize(RndmMatrix.columnNumber, RndmMatrix.linesNumber);
                 RndmMatrix = new Matrix<bool>(transposedSize);
