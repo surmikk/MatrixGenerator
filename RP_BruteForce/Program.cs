@@ -230,7 +230,7 @@ namespace RP_BruteForce
             // 0    , lb(1), ub(2), lb(3), ub(4),...
             int[] oddColumnIndices = new int[columnDistributor.indices.Length];
             // adding necessary auxiliary value to a unused position of colDistr.upperBorder
-            columnDistributor.upperBorder[columnDistributor.upperBorder.Length - 1] = columnDistributor.upperBorder[columnDistributor.upperBorder.Length - 2] + 1;
+            columnDistributor.upperBorder[columnDistributor.upperBorder.Length - 1] = columnDistributor.indices[columnDistributor.indices.Length - 1] + 1;
             for (int i = 0; i < columnDistributor.indices.Length - 1; i++)
             {
                 if (i % 2 == 0)
