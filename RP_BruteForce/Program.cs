@@ -20,145 +20,260 @@ namespace RP_BruteForce
         }
     }
 
-    class Matrix<T>
+    class Matrix01
     {
-        public readonly int linesNumber;
-        public readonly int columnNumber;
-        public T[][] element;
-        public int numberOf1;
-        public Matrix(MatrixSize size)
+        public int LinesNumber
         {
-            linesNumber = size.linesNumber;
-            columnNumber = size.columnNumber;
-            element = new T[linesNumber][];
-            for (int i = 0; i < linesNumber; i++)
+            get { return Element.Length; }
+        }
+        public int ColumnNumber
+        {
+            get { return Element[0].Length; }
+        }
+        public bool[][] Element { get; private set; }
+        public int NumberOf1Elements { get; private set; }
+        public Matrix01(MatrixSize size)
+        {
+            Element = new bool[size.linesNumber][];
+            for (int i = 0; i < size.linesNumber; i++)
             {
-                element[i] = new T[columnNumber];
+                Element[i] = new bool[size.columnNumber];
             }
         }
-        public Matrix(Matrix<T> originalMatrix)
+        public Matrix01(Matrix01 originalMatrix)
         {
-            linesNumber = originalMatrix.linesNumber;
-            columnNumber = originalMatrix.columnNumber;
-            element = new T[linesNumber][];
-            for (int i = 0; i < linesNumber; i++)
+            Element = new bool[originalMatrix.LinesNumber][];
+            for (int i = 0; i < LinesNumber; i++)
             {
-                element[i] = new T[columnNumber];
-            }
-            for (int i = 0; i < linesNumber; i++)
-            {
-                for (int j = 0; j < columnNumber; j++)
+                Element[i] = new bool[originalMatrix.ColumnNumber];
+                for (int j = 0; j < ColumnNumber; j++)
                 {
-                    element[i][j] = originalMatrix.element[i][j];
+                    Element[i][j] = originalMatrix.Element[i][j];
                 }
             }
+            NumberOf1Elements = originalMatrix.NumberOf1Elements;
+        }
+        /// <summary>
+        /// Prints the matrix or its transposition.
+        /// </summary>
+        public void Print(bool transpositionNecessary)
+        {
+            if (transpositionNecessary)
+            {
+                for (int j = 0; j < ColumnNumber; j++)
+                {
+                    for (int i = 0; i < LinesNumber; i++)
+                    {
+                        if (Element[i][j] == true)
+                        {
+                            Console.Write("1");
+                        }
+                        else
+                        {
+                            Console.Write("0");
+                        }
+                    }
+                    Console.WriteLine();
+                }
+            }
+            else
+            {
+                for (int i = 0; i < LinesNumber; i++)
+                {
+                    for (int j = 0; j < ColumnNumber; j++)
+                    {
+                        if (Element[i][j] == true)
+                        {
+                            Console.Write("1");
+                        }
+                        else
+                        {
+                            Console.Write("0");
+                        }
+                    }
+                    Console.WriteLine();
+                }
+            }
+        }
+        public void Transpose()
+        {
+            bool[][] resultElement = new bool[ColumnNumber][];
+            for (int i = 0; i < ColumnNumber; i++)
+            {
+                resultElement[i] = new bool[LinesNumber];
+            }
+            for (int i = 0; i < LinesNumber; i++)
+            {
+                for (int j = 0; j < ColumnNumber; j++)
+                {
+                    resultElement[j][i] = Element[i][j];
+                }
+            }
+            Element = resultElement;
+        }
+        /// <summary>
+        /// Returns false if the loading failed
+        /// </summary>
+        public bool LoadPattern(TextReader reader)
+        {
+            bool failed = false;
+            for (int i = 0; i < LinesNumber; i++)
+            {
+                if (failed) return false;
+                string inputLine = reader.ReadLine();
+                if (inputLine.Length < ColumnNumber)
+                {
+                    throw new FormatException();
+                }
+                for (int j = 0; j < ColumnNumber; j++)
+                {
+                    if (inputLine[j] == '1')
+                    {
+                        Element[i][j] = true;
+                    }
+                    else if (inputLine[j] != '0')
+                    {
+                        failed = true;
+                    }
+                }
+            }
+            if (failed)
+            {
+                return false;
+            }
+            else return true;
+        }
+        /// <summary>
+        /// Changes element on the given position. Returns true if an 1 element was created.
+        /// </summary>
+        public bool SwapElement(int lineToChange, int columnToChange)
+        {
+            if (Element[lineToChange][columnToChange] == true)
+            {
+                Element[lineToChange][columnToChange] = false;
+                NumberOf1Elements--;
+                return false;
+            }
+            else
+            {
+                Element[lineToChange][columnToChange] = true;
+                NumberOf1Elements++;
+                return true;
+            }
+        }
+    }
+
+    class LinesDistributor
+    {
+        /// <summary>
+        /// an array that contains bounds of the current matrix side distribution
+        /// </summary>
+        public readonly int[] indices;
+        public int[] lowerBorder;
+        public int[] upperBorder;
+        readonly int rndmMatrixSideSize;
+        public LinesDistributor(int matrixSize, int numberOfSectionSepararators, int patternLine, int swappedLine)
+        {
+            indices = new int[numberOfSectionSepararators + 2];
+            lowerBorder = new int[numberOfSectionSepararators + 2];
+            upperBorder = new int[numberOfSectionSepararators + 2];
+            rndmMatrixSideSize = matrixSize;
+
+            //initializing necessary values so that the border setting work properly
+            lowerBorder[1] = 0;
+            upperBorder[upperBorder.Length - 2] = matrixSize;
+            indices[indices.Length - 1] = matrixSize;
+            if (patternLine == 0)
+            {
+                lowerBorder[1] = swappedLine + 1;
+            }
+            else if (patternLine == numberOfSectionSepararators)
+            {
+                upperBorder[upperBorder.Length - 2] = swappedLine + 1;
+            }
+            else
+            {
+                upperBorder[patternLine] = swappedLine + 1;
+                lowerBorder[patternLine + 1] = swappedLine + 1;
+            }
+            SetBorders();
+            InitializeIndices();
+        }
+        /// <summary>
+        /// Initializes indices with lower border values
+        /// </summary>
+        public void InitializeIndices()
+        {
+            for (int i = 1; i < indices.Length - 1; i++)
+            {
+                indices[i] = lowerBorder[i];
+            }
+        }
+
+        public void SetBorders()
+        {
+            for (int i = 1; i < lowerBorder.Length - 1; i++)
+            {
+                if (lowerBorder[i] == 0)
+                {
+                    lowerBorder[i] = lowerBorder[i - 1] + 1;
+                }
+            }
+            for (int i = upperBorder.Length - 2; i > 0; i--)
+            {
+                if (upperBorder[i] == 0)
+                {
+                    upperBorder[i] = upperBorder[i + 1] - 1;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Tries to make another distribution. Returns false if another distribution doesn't exist.
+        /// </summary>
+        public bool NextPosition()
+        {
+            // increases the last value of indices
+            // if it overflows its upper border, the last but one value is increased and the last one is decreased to its lower border. And so on.
+            bool overflow = false;
+            int i = indices.Length - 2;
+            indices[i]++;
+            while (indices[i] == upperBorder[i])
+            {
+                overflow = true;
+                i--;
+                if (i < 1)
+                {
+                    InitializeIndices();
+                    return false;
+                }
+                indices[i]++;
+            }
+            if (overflow)
+            {
+                for (int j = i + 1; j < indices.Length - 1; j++)
+                {
+                    if (indices[j - 1] + 1 < lowerBorder[j])
+                    {
+                        indices[j] = lowerBorder[j];
+                    }
+                    else
+                    {
+                        indices[j] = indices[j - 1] + 1;
+                    }
+                }
+            }
+            return true;
         }
     }
 
     class Distributor
     {
-        class LinesDistributor
-        {
-            /// <summary>
-            /// an array that contains bounds of the current matrix side distribution
-            /// </summary>
-            public readonly int[] indices;
-            public int[] lowerBorder;
-            public int[] upperBorder;
-            readonly int rndmMatrixSize;
-            public LinesDistributor(int matrixSize, int numberOfSectionSepararators, int patternLine, int swappedLine)
-            {
-                indices = new int[numberOfSectionSepararators + 2];
-                lowerBorder = new int[numberOfSectionSepararators + 2];
-                upperBorder = new int[numberOfSectionSepararators + 2];
-                rndmMatrixSize = matrixSize;
-
-                lowerBorder[1] = 0;
-                upperBorder[upperBorder.Length - 2] = matrixSize;
-                indices[indices.Length - 1] = matrixSize;
-                if (patternLine == 0)
-                {
-                    lowerBorder[1] = swappedLine + 1;
-                }
-                else if (patternLine == numberOfSectionSepararators)
-                {
-                    upperBorder[upperBorder.Length - 2] = swappedLine + 1;
-                }
-                else
-                {
-                    upperBorder[patternLine] = swappedLine + 1;
-                    lowerBorder[patternLine + 1] = swappedLine + 1;
-                }
-                SetBorders();
-                InitializeIndices();
-            }
-            public void InitializeIndices()
-            {
-                for (int i = 1; i < indices.Length - 1; i++)
-                {
-                    indices[i] = lowerBorder[i];
-                }
-            }
-            public void SetBorders()
-            {
-                for (int i = 1; i < lowerBorder.Length - 1; i++)
-                {
-                    if (lowerBorder[i] == 0)
-                    {
-                        lowerBorder[i] = lowerBorder[i - 1] + 1;
-                    }
-                }
-                for (int i = upperBorder.Length - 2; i > 0; i--)
-                {
-                    if (upperBorder[i] == 0)
-                    {
-                        upperBorder[i] = upperBorder[i + 1] - 1;
-                    }
-                }
-            }
-
-            /// <summary>
-            /// Tries to make another distribution. Returns false if there isn't another distribution
-            /// </summary>
-            public bool NextPosition()
-            {
-                bool overflow = false;
-                int i = indices.Length - 2;
-                indices[i]++;
-                while (indices[i] == upperBorder[i])
-                {
-                    overflow = true;
-                    i--;
-                    if (i < 1)
-                    {
-                        InitializeIndices();
-                        return false;
-                    }
-                    indices[i]++;
-                }
-                if (overflow)
-                {
-                    for (int j = i + 1; j < indices.Length - 1; j++)
-                    {
-                        if (indices[j - 1] + 1 < lowerBorder[j])
-                        {
-                            indices[j] = lowerBorder[j];
-                        }
-                        else
-                        {
-                            indices[j] = indices[j - 1] + 1;
-                        }
-                    }
-                }
-                return true;
-            }
-        }
-
         Context context;
         LinesDistributor linesDistributor;
         LinesDistributor columnDistributor;
 
-        // remembers values from column distributor's constructor
+        // remembers values from column distributor's constructor, because these values are used and changed during the search
         int[] originalColDistLowerBorder;
         int[] originalColDistUpperBorder;
 
@@ -174,17 +289,17 @@ namespace RP_BruteForce
             this.patternLine = patternLine;
 
             //lines distributor constructor
-            if (DistributionPossible(swapedLine, patternLine, context.RndmMatrix.linesNumber, context.PatternMatrix.linesNumber))
+            if (DistributionPossible(swapedLine, patternLine, context.RndmMatrix.LinesNumber, context.PatternMatrix.LinesNumber))
             {
-                linesDistributor = new LinesDistributor(context.RndmMatrix.linesNumber, context.PatternMatrix.linesNumber - 1, patternLine, swapedLine);
+                linesDistributor = new LinesDistributor(context.RndmMatrix.LinesNumber, context.PatternMatrix.LinesNumber - 1, patternLine, swapedLine);
                 linesDistributorLoaded = true;
             }
             else return;
 
             //column distributor constructor
-            if (DistributionPossible(swapedColumn, patternColumn, context.RndmMatrix.columnNumber, context.PatternMatrix.columnNumber))
+            if (DistributionPossible(swapedColumn, patternColumn, context.RndmMatrix.ColumnNumber, context.PatternMatrix.ColumnNumber))
             {
-                columnDistributor = new LinesDistributor(context.RndmMatrix.columnNumber, context.PatternMatrix.columnNumber - 1, patternColumn, swapedColumn);
+                columnDistributor = new LinesDistributor(context.RndmMatrix.ColumnNumber, context.PatternMatrix.ColumnNumber - 1, patternColumn, swapedColumn);
                 originalColDistLowerBorder = new int[columnDistributor.indices.Length];
                 Array.Copy(columnDistributor.indices, originalColDistLowerBorder, columnDistributor.indices.Length);
                 originalColDistUpperBorder = new int[columnDistributor.upperBorder.Length];
@@ -195,11 +310,11 @@ namespace RP_BruteForce
         }
 
         /// <summary>
-        /// For every possible line distribution tries to find forbidden pattern
+        /// For every possible line distribution tries to find forbidden pattern. Returns true if the pattern is found.
         /// </summary>
-        /// <returns></returns>
         public bool TryFindPattern()
         {
+            // advanced method for setting its upper and lower borders
             if (SetBordersToLineSeparators())
             {
                 // checking all possible positions of line separators 
@@ -207,12 +322,13 @@ namespace RP_BruteForce
                 {
                     if (MoveWithColumnSeparators())
                     {
-                        //for the current line distribution can be column separators moved to positions so that the divided matrix contains forbiden pattern
+                        // for the current line distribution can be column separators moved to positions so that the divided matrix contains forbiden pattern
                         return true;
                     }
                 }
                 while (linesDistributor.NextPosition());
             }
+            // any distribution doesn't contain the forbidden pattern
             return false;
         }
 
@@ -223,7 +339,7 @@ namespace RP_BruteForce
         {
             // auxiliary indices that contains lower and upper borders of each position of column distributor
             // lb(i) ... lowerBorder of the i-th column (counted from 0)
-            // up(i) ... upperBorder of the i-th column - 1
+            // ub(i) ... upperBorder of the i-th column - 1
 
             // lb(0), ub(1), lb(2), ub(3),...
             int[] evenColumnIndices = new int[columnDistributor.indices.Length];
@@ -251,14 +367,15 @@ namespace RP_BruteForce
 
                 bool contains1;
                 // moving from the top to the bottom
-                for (int i = 0; i < context.PatternMatrix.linesNumber; i++)
+                for (int i = 0; i < context.PatternMatrix.LinesNumber; i++)
                 {
                     auxiliaryLineIndices[i + 1] = Maximum(linesDistributor.lowerBorder[i + 1], auxiliaryLineIndices[i] + 1);
-                    for (int j = 0; j < context.PatternMatrix.columnNumber; j++)
+                    for (int j = 0; j < context.PatternMatrix.ColumnNumber; j++)
                     {
-                        if (context.PatternMatrix.element[i][j])
+                        // if there must be at least one element in the rectangle
+                        if (context.PatternMatrix.Element[i][j])
                         {
-                            //moving separator down if neighter the biggest possible rectangle doesn't contain any 1 element
+                            //moving separator down if neither the biggest possible rectangle doesn't contain any 1 element
                             while (auxiliaryLineIndices[i + 1] < linesDistributor.upperBorder[i + 1])
                             {
                                 if (j % 2 == 0)
@@ -292,7 +409,7 @@ namespace RP_BruteForce
             }
 
             // setting upper borders
-            // very similar to setting lower border, the defference is caused by the difference between values saved in lower- and upper-borders
+            // very similar to setting lower border, the difference is caused by the difference between values saved in lower- and upper-borders (+-1)
             {
                 int[] auxiliaryLineIndices = new int[linesDistributor.upperBorder.Length];
                 for (int i = 1; i < auxiliaryLineIndices.Length - 1; i++)
@@ -303,15 +420,15 @@ namespace RP_BruteForce
 
                 bool contains1;
                 //moving separators,from the first to the last, to the right as much as necessary
-                for (int i = context.PatternMatrix.linesNumber - 1; i >= 0; i--)
+                for (int i = context.PatternMatrix.LinesNumber - 1; i >= 0; i--)
                 {
-                    if (i != context.PatternMatrix.linesNumber - 1)
+                    if (i != context.PatternMatrix.LinesNumber - 1)
                     {
                         auxiliaryLineIndices[i] = Minimum(linesDistributor.upperBorder[i] - 1, auxiliaryLineIndices[i + 1] - 1);
                     }
-                    for (int j = 0; j < context.PatternMatrix.columnNumber; j++)
+                    for (int j = 0; j < context.PatternMatrix.ColumnNumber; j++)
                     {
-                        if (context.PatternMatrix.element[i][j])
+                        if (context.PatternMatrix.Element[i][j])
                         {
                             while (auxiliaryLineIndices[i] >= linesDistributor.lowerBorder[i])
                             {
@@ -352,7 +469,7 @@ namespace RP_BruteForce
         }
 
         /// <summary>
-        /// Returns true if there exists forbidden pattern
+        /// For the given lines distribution moves with column separators. Returns true if there exists forbidden pattern
         /// </summary>
         /// <returns></returns>
         bool MoveWithColumnSeparators()
@@ -365,13 +482,13 @@ namespace RP_BruteForce
             auxiliaryColumnIndices[auxiliaryColumnIndices.Length - 2] = originalColDistUpperBorder[originalColDistUpperBorder.Length - 2] - 1;
 
             //last separator initialization (moving to the left as much as necessary)
-            for (int i = 0; i < context.PatternMatrix.linesNumber; i++)
+            for (int i = 0; i < context.PatternMatrix.LinesNumber; i++)
             {
-                if (context.PatternMatrix.element[i][context.PatternMatrix.columnNumber - 1])
+                if (context.PatternMatrix.Element[i][context.PatternMatrix.ColumnNumber - 1])
                 {
                     while (auxiliaryColumnIndices[auxiliaryColumnIndices.Length - 2] >= originalColDistLowerBorder[originalColDistLowerBorder.Length - 2])
                     {
-                        if (context.CheckRectangle(linesDistributor.indices, auxiliaryColumnIndices, i, context.PatternMatrix.columnNumber - 1))
+                        if (context.CheckRectangle(linesDistributor.indices, auxiliaryColumnIndices, i, context.PatternMatrix.ColumnNumber - 1))
                         {
                             break;
                         }
@@ -396,12 +513,12 @@ namespace RP_BruteForce
             }
 
             //moving separators,from the first to the last but one, to the right as much as necessary for containing all 1 elements in given column
-            for (int j = 0; j < context.PatternMatrix.columnNumber - 1; j++)
+            for (int j = 0; j < context.PatternMatrix.ColumnNumber - 1; j++)
             {
                 auxiliaryColumnIndices[j + 1] = Maximum(originalColDistLowerBorder[j + 1], auxiliaryColumnIndices[j]);
-                for (int i = 0; i < context.PatternMatrix.linesNumber; i++)
+                for (int i = 0; i < context.PatternMatrix.LinesNumber; i++)
                 {
-                    if (context.PatternMatrix.element[i][j])
+                    if (context.PatternMatrix.Element[i][j])
                     {
                         while (auxiliaryColumnIndices[j + 1] < columnDistributor.upperBorder[j + 1])
                         {
@@ -444,10 +561,13 @@ namespace RP_BruteForce
             else return y;
         }
 
-        bool DistributionPossible(int randomMatrixLine, int patternLine, int rndmSize, int patternSize)
+        /// <summary>
+        /// Checks whether the selected element is not too close to the edge of the generated matrix
+        /// </summary>
+        bool DistributionPossible(int randomMatrixSwapedLine, int patternLine, int rndmSize, int patternSize)
         {
-            if (randomMatrixLine + patternSize - patternLine <= rndmSize &&
-                randomMatrixLine - patternLine >= 0)
+            if (randomMatrixSwapedLine + patternSize - patternLine <= rndmSize &&
+                randomMatrixSwapedLine - patternLine >= 0)
             {
                 return true;
             }
@@ -460,86 +580,117 @@ namespace RP_BruteForce
     /// </summary>
     class Context
     {
-        public Matrix<bool> RndmMatrix;
-        public Matrix<bool> PatternMatrix;
+        public readonly Matrix01 RndmMatrix;
+        public readonly Matrix01 PatternMatrix;
         /// <summary>
-        /// element[i][j] contains sum of all 1 in the left-upper direction from this position
+        /// position[i][j] contains the sum of all 1 in the left-upper direction from this position
         /// </summary>
-        public Matrix<int> CountingMatrix;
-
-        public Context(Matrix<bool> RandomMatrix, Matrix<bool> PatternMatrix, Matrix<int> matrix)
+        public readonly int[][] CountingMatrix;
+        // every new Context is created from the previous. Following variables provide information about the change.
+        public bool Element1Created
         {
-            RndmMatrix = RandomMatrix;
+            get { return RndmMatrix.Element[ChangedLine][ChangedColumn]; }
+        }
+        public int ChangedLine { get; private set; }
+        public int ChangedColumn { get; private set; }
+
+        public Context(Matrix01 RandomMatrix, Matrix01 PatternMatrix, int[][] CountingMatrix)
+        {
+            RndmMatrix = new Matrix01(RandomMatrix);
             this.PatternMatrix = PatternMatrix;
-            this.CountingMatrix = matrix;
+            this.CountingMatrix = new int[CountingMatrix.Length][];
+            for (int i = 0; i < CountingMatrix.Length; i++)
+            {
+                this.CountingMatrix[i] = new int[CountingMatrix[i].Length];
+                for (int j = 0; j < CountingMatrix[i].Length; j++)
+                {
+                    this.CountingMatrix[i][j] = CountingMatrix[i][j];
+                }
+            }
         }
-
-        public bool SwapElement(int i, int j)
+        public Context(MatrixSize rndmMatrixSize, Matrix01 PatternMatrix)
         {
-            if (RndmMatrix.element[i][j] == true)
+            RndmMatrix = new Matrix01(rndmMatrixSize);
+            this.PatternMatrix = PatternMatrix;
+            CountingMatrix = new int[rndmMatrixSize.linesNumber][];
+            for (int i = 0; i < rndmMatrixSize.linesNumber; i++)
             {
-                RndmMatrix.element[i][j] = false;
-                RndmMatrix.numberOf1--;
-                RepairCountingMatrix(i, j, false);
-                return false;
-            }
-            else
-            {
-                RndmMatrix.element[i][j] = true;
-                RndmMatrix.numberOf1++;
-                RepairCountingMatrix(i, j, true);
-                return true;
+                CountingMatrix[i] = new int[rndmMatrixSize.columnNumber];
             }
         }
 
+        /// <summary>
+        /// Returns a new context with one change on a random position. Its all fields are correctly initialized.
+        /// </summary>
+        public Context GetNext(int lineToChange, int columnToChange)
+        {
+            Context newContext = new Context(RndmMatrix, PatternMatrix, CountingMatrix)
+            {
+                ChangedLine = lineToChange,
+                ChangedColumn = columnToChange
+            };
+            newContext.RndmMatrix.SwapElement(lineToChange, columnToChange);
+            newContext.RepairCountingMatrix(newContext.ChangedLine, newContext.ChangedColumn, newContext.Element1Created);
+            return newContext;
+        }
+
+        /// <summary>
+        /// Depending on element 1 or 0 creation, increases or decreases values in given rectangle
+        /// </summary>
         void RepairCountingMatrix(int x, int y, bool element1Created)
         {
-            for (int i = x; i < CountingMatrix.linesNumber; i++)
+            for (int i = x; i < CountingMatrix.Length; i++)
             {
-                for (int j = y; j < CountingMatrix.columnNumber; j++)
+                for (int j = y; j < CountingMatrix[0].Length; j++)
                 {
                     if (element1Created)
                     {
-                        CountingMatrix.element[i][j]++;
+                        CountingMatrix[i][j]++;
                     }
-                    else CountingMatrix.element[i][j]--;
+                    else CountingMatrix[i][j]--;
                 }
             }
         }
 
         /// <summary>
-        /// Returns true if there is an 1 element in given rectangle
+        /// Checks if there is an 1 element in given rectangle
         /// </summary>
+        /// <param name="lineIndices">Indices of the current matrix lines distribution</param>
+        /// <param name="columnIndices">Indices of the current matrix column distribution</param>
+        /// <param name="lineNum">Index of the required pattern line to check</param>
+        /// <param name="colNum">Index of the required pattern column to check</param>
+        /// <returns>Returns true if there is an 1 element</returns>
         public bool CheckRectangle(int[] lineIndices, int[] columnIndices, int lineNum, int colNum)
         {
+            // adds or subtracts sums of all 1 elements in at most 4 left-upper corner rectangles to get a sum of all 1 in any rectangle in the matrix
             int numberOf1InRectangle = 0;
             if (lineNum == 0)
             {
                 if (colNum == 0)
                 {
                     //left upper rectangle
-                    numberOf1InRectangle = CountingMatrix.element[lineIndices[1] - 1][columnIndices[1] - 1];
+                    numberOf1InRectangle = CountingMatrix[lineIndices[1] - 1][columnIndices[1] - 1];
                 }
                 else
                 {
                     //upper rectangles
-                    numberOf1InRectangle = CountingMatrix.element[lineIndices[1] - 1][columnIndices[colNum + 1] - 1]
-                                         - CountingMatrix.element[lineIndices[1] - 1][columnIndices[colNum] - 1];
+                    numberOf1InRectangle = CountingMatrix[lineIndices[1] - 1][columnIndices[colNum + 1] - 1]
+                                         - CountingMatrix[lineIndices[1] - 1][columnIndices[colNum] - 1];
                 }
             }
             else if (colNum == 0)
             {
                 //left rectangles
-                numberOf1InRectangle = CountingMatrix.element[lineIndices[lineNum + 1] - 1][columnIndices[1] - 1]
-                                     - CountingMatrix.element[lineIndices[lineNum] - 1][columnIndices[1] - 1];
+                numberOf1InRectangle = CountingMatrix[lineIndices[lineNum + 1] - 1][columnIndices[1] - 1]
+                                     - CountingMatrix[lineIndices[lineNum] - 1][columnIndices[1] - 1];
             }
             else
             {
                 //other possibilities
-                numberOf1InRectangle = CountingMatrix.element[lineIndices[lineNum + 1] - 1][columnIndices[colNum + 1] - 1]
-                                     - CountingMatrix.element[lineIndices[lineNum + 1] - 1][columnIndices[colNum] - 1]
-                                     - CountingMatrix.element[lineIndices[lineNum] - 1][columnIndices[colNum + 1] - 1]
-                                     + CountingMatrix.element[lineIndices[lineNum] - 1][columnIndices[colNum] - 1];
+                numberOf1InRectangle = CountingMatrix[lineIndices[lineNum + 1] - 1][columnIndices[colNum + 1] - 1]
+                                     - CountingMatrix[lineIndices[lineNum + 1] - 1][columnIndices[colNum] - 1]
+                                     - CountingMatrix[lineIndices[lineNum] - 1][columnIndices[colNum + 1] - 1]
+                                     + CountingMatrix[lineIndices[lineNum] - 1][columnIndices[colNum] - 1];
             }
 
             if (numberOf1InRectangle > 0)
@@ -548,28 +699,110 @@ namespace RP_BruteForce
             }
             else return false;
         }
+
+        /// <summary>
+        /// Returns true if the new matrix doesn't contain the forbidden pattern.
+        /// </summary>
+        public bool TestMatrix()
+        {
+            if (!Element1Created || RndmMatrix.NumberOf1Elements < PatternMatrix.NumberOf1Elements)
+            {
+                // if we remove an 1 element from a matrix that doesn't contain the pattern, we cannot create the pattern
+                // the matrix containing less 1 elements than the pattern matrix itself cannot contain the pattern
+                return true;
+            }
+
+            for (int i = 0; i < PatternMatrix.LinesNumber; i++)
+            {
+                for (int j = 0; j < PatternMatrix.ColumnNumber; j++)
+                {
+                    if (PatternMatrix.Element[i][j])
+                    {
+                        //tests all distributions where the new 1 element (and it's rectangular neighborhood) is contracted to element [i][j] of PatternMatrix
+                        Distributor distributor = new Distributor(this, i, j, ChangedLine, ChangedColumn);
+                        if (!distributor.linesDistributorLoaded)
+                        {
+                            break;
+                        }
+                        if (!distributor.columnDistributorLoaded)
+                        {
+                            continue;
+                        }
+
+                        if (distributor.TryFindPattern())
+                        {
+                            // forbidden pattern found
+                            return false;
+                        }
+                    }
+                }
+            }
+            // forbidden pattern wasn't found in any possible distribution of the matrix
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Contains all necessary parameters, method and return value for tasks that search for another satisfying matrix.
+    /// </summary>
+    class Job
+    {
+        public Context originalContext;
+        public Context newContext;
+        public Random rndm;
+        private int changedLine;
+        private int changedColumn;
+        public int NumberOfIterations { get; private set; }
+        /// <summary>
+        /// True if the corresponding task has found another matrix not containing pattern.
+        /// </summary>
+        public bool Result { get; private set; }
+        /// <summary>
+        /// Loop condition, can be set from the main thread to politely abort task in progress.
+        /// </summary>
+        public bool solutionFound = false;
+
+        public Job(Context context, Random rndm, int changedLine, int changedColumn)
+        {
+            originalContext = context;
+            this.rndm = rndm;
+            this.changedLine = changedLine;
+            this.changedColumn = changedColumn;
+        }
+
+        /// <summary>
+        /// Tries to find another satisfying matrix in cycle until this or another task successfully ends.
+        /// </summary>
+        public void Run()
+        {
+            do
+            {
+                NumberOfIterations++;
+                newContext = originalContext.GetNext(changedLine, changedColumn);
+                Result = newContext.TestMatrix();
+                if (Result)
+                {
+                    solutionFound = true;
+                }
+                else
+                {
+                    lock (rndm)
+                    {
+                        changedLine = rndm.Next(originalContext.RndmMatrix.LinesNumber);
+                        changedColumn = rndm.Next(originalContext.RndmMatrix.ColumnNumber);
+                    }
+                }
+            } while (!solutionFound);
+        }
     }
 
     class Program
     {
-        static Matrix<bool> RndmMatrix;
-        static Matrix<bool> PatternMatrix;
-        static Matrix<int> CountingMatrix;
-
-        static bool transpositionIsNeeded = false;
-        static Random rndm = new Random(1);
-
-        static void ReportError(string message)
-        {
-            Console.WriteLine(message + " Press any key to exit.");
-            Console.ReadLine();
-        }
-
         static MatrixSize LoadMatrixSize(string inputLine)
         {
+            string[] tokens = inputLine.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             int linesNumber;
             int columnNumber;
-            string[] tokens = inputLine.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             if (tokens.Length != 2 ||
                 !int.TryParse(tokens[0], out linesNumber) ||
                 !int.TryParse(tokens[1], out columnNumber))
@@ -585,127 +818,187 @@ namespace RP_BruteForce
             return new MatrixSize(linesNumber, columnNumber);
         }
 
-        static void LoadPatternMatrix(TextReader reader)
+        static void ReportError(string message)
         {
-            for (int i = 0; i < PatternMatrix.linesNumber; i++)
-            {
-                string inputLine = reader.ReadLine();
-                if (inputLine.Length < PatternMatrix.columnNumber)
-                {
-                    throw new FormatException();
-                }
-                for (int j = 0; j < PatternMatrix.columnNumber; j++)
-                {
-                    if (inputLine[j] != '0')
-                    {
-                        PatternMatrix.element[i][j] = true;
-                        PatternMatrix.numberOf1++;
-                    }
-                }
-            }
-        }
-
-        static Matrix<bool> TransposeMatrix(Matrix<bool> matrix)
-        {
-            Matrix<bool> result = new Matrix<bool>(new MatrixSize(matrix.columnNumber, matrix.linesNumber));
-            for (int i = 0; i < matrix.linesNumber; i++)
-            {
-                for (int j = 0; j < matrix.columnNumber; j++)
-                {
-                    result.element[j][i] = matrix.element[i][j];
-                }
-            }
-            return result;
-        }
-
-        static void PrintMatrix(Matrix<bool> matrix)
-        {
-            if (transpositionIsNeeded)
-            {
-                for (int j = 0; j < matrix.columnNumber; j++)
-                {
-                    for (int i = 0; i < matrix.linesNumber; i++)
-                    {
-                        if (matrix.element[i][j] == true)
-                        {
-                            Console.Write("1");
-                        }
-                        else
-                        {
-                            Console.Write("0");
-                        }
-                    }
-                    Console.WriteLine();
-                }
-            }
-            else
-            {
-                for (int i = 0; i < matrix.linesNumber; i++)
-                {
-                    for (int j = 0; j < matrix.columnNumber; j++)
-                    {
-                        if (matrix.element[i][j] == true)
-                        {
-                            Console.Write("1");
-                        }
-                        else
-                        {
-                            Console.Write("0");
-                        }
-                    }
-                    Console.WriteLine();
-                }
-            }
+            Console.WriteLine(message + " Press any key to exit.");
+            Console.ReadLine();
         }
 
         /// <summary>
-        /// Returns true if the new matrix doesn't contain forbidden pattern, otherwise keeps original matrix.
+        /// It is faster to work with transposed matrix, so in the end it must be transposed again
         /// </summary>
-        static bool ChangeAndTestMatrix(Context context)
+        static bool transpositionNecessary = false;
+        static Random randomGenerator = new Random();
+        /// <summary>
+        /// Starts N tasks and returns index of the succesful one, prefering a creation of 1 instead of its removal.
+        /// </summary>
+        /// <param name="quickMode">Indicates if we need to check only the first loop in each thread</param>
+        /// <param name="jobs">Contains control and return variables for each thread</param>
+        static int ProcessNTasks(int numberOfThreads, bool quickMode, Job[] jobs)
         {
-            int rndmLine = rndm.Next(RndmMatrix.linesNumber);
-            int rndmColumn = rndm.Next(RndmMatrix.columnNumber);
-            bool element1Created = context.SwapElement(rndmLine, rndmColumn);
-
-            if (!element1Created || RndmMatrix.numberOf1 < PatternMatrix.numberOf1)
+            Task[] tasks = new Task[numberOfThreads];
+            for (int i = 0; i < numberOfThreads; i++)
             {
-                //trivial situation when forbidden pattern definitely wasn't made
-                return true;
+                tasks[i] = new Task(jobs[i].Run);
+            }
+            foreach (var task in tasks)
+            {
+                task.Start();
+            }
+            int indexOfNextContext = -1;
+            // in normal mode this thread waits for the first finished created thread
+            // in quick mode, threads are "aborted" immediately and this thread checks their results
+            if (!quickMode)
+            {
+                indexOfNextContext = Task.WaitAny(tasks);
+            }
+            for (int i = 0; i < numberOfThreads; i++)
+            {
+                // kind aborting of all threads
+                jobs[i].solutionFound = true;
             }
 
-            for (int i = 0; i < PatternMatrix.linesNumber; i++)
+            // checks if the finished thread found a solution with 1 element creation
+            if (indexOfNextContext != -1 && jobs[indexOfNextContext].newContext.Element1Created)
             {
-                for (int j = 0; j < PatternMatrix.columnNumber; j++)
-                {
-                    if (PatternMatrix.element[i][j]) //tests all distributions where the new 1 element (and it's rectangular neighborhood) is contracted to element [i][j] of PatternMatrix
-                    {
-                        Distributor distributor = new Distributor(context, i, j, rndmLine, rndmColumn);
-                        if (!distributor.linesDistributorLoaded)
-                        {
-                            break;
-                        }
-                        if (!distributor.columnDistributorLoaded)
-                        {
-                            continue;
-                        }
+                return indexOfNextContext;
+            }
 
-                        if (distributor.TryFindPattern())
-                        {
-                            // forbidden pattern found
-                            context.SwapElement(rndmLine, rndmColumn);
-                            return false;
-                        }
+            // otherwise waits for the termination of all threads and checks their result
+            Task.WaitAll(tasks);
+            for (int i = 0; i < numberOfThreads; i++)
+            {
+                if (jobs[i].Result)
+                {
+                    indexOfNextContext = i;
+                    if (jobs[i].newContext.Element1Created)
+                    {
+                        break;
                     }
                 }
             }
-            // forbidden pattern wasn't found
-            return true;
+            return indexOfNextContext;
+        }
+
+        static Context currentContext;
+        /// <summary>
+        /// Process given number of iterations using multithreading
+        /// </summary>
+        static void GenerateMultiThreading(int numberOfIterations)
+        {
+            int numberOfThreads = Environment.ProcessorCount;
+            Job[] jobs = new Job[numberOfThreads];
+            int counter = 0;
+
+            while (counter < numberOfIterations)
+            {
+                bool quickSolutionFound = false;
+                int necessaryNumberOfThreads = numberOfThreads;
+                // generating initial positions for jobs
+                int lineToChange = 0;
+                int columnToChange = 0; //default values, will be changed
+                for (int i = 0; i < numberOfThreads; i++)
+                {
+                    lock (randomGenerator)
+                    {
+                        lineToChange = randomGenerator.Next(currentContext.RndmMatrix.LinesNumber);
+                        columnToChange = randomGenerator.Next(currentContext.RndmMatrix.ColumnNumber);
+                    }
+                    if (currentContext.RndmMatrix.Element[lineToChange][columnToChange])
+                    {
+                        // there is a 1 element on the initial coordinates, swapping to 0 makes the quick solution
+                        // we need to check if the previous threads initially not contain a slow solution that we could skip
+                        quickSolutionFound = true;
+                        necessaryNumberOfThreads = i;
+                        break;
+                    }
+                    else
+                    {
+                        jobs[i] = new Job(currentContext, randomGenerator, lineToChange, columnToChange);
+                    }
+                }
+
+                int indexOfNextContext = ProcessNTasks(necessaryNumberOfThreads, quickSolutionFound, jobs);
+
+                // increasing counter and changing to the new context
+                if (quickSolutionFound)
+                {
+                    counter += necessaryNumberOfThreads + 1;
+                    if (indexOfNextContext == -1)
+                    {
+                        currentContext = currentContext.GetNext(lineToChange, columnToChange);
+                        continue;
+                    }
+                }
+                else
+                {
+                    //an estimate of the number of iterations that occurred in other threads before the solution took a turn
+                    int sum = 0;
+                    int minIterationsNumber = int.MaxValue;
+                    int iterationsNumber;
+                    for (int i = 0; i < numberOfThreads; i++)
+                    {
+                        iterationsNumber = jobs[i].NumberOfIterations;
+                        if (i != indexOfNextContext)
+                        {
+                            sum += iterationsNumber;
+                        }
+                        if (iterationsNumber < minIterationsNumber)
+                        {
+                            minIterationsNumber = iterationsNumber;
+                        }
+                    }
+                    if (minIterationsNumber == 1 || minIterationsNumber == 0)
+                    {
+                        sum = Environment.ProcessorCount - 1;
+                    }
+                    else
+                    {
+                        sum = sum * (minIterationsNumber - 1) / minIterationsNumber;
+                    }
+
+                    sum += jobs[indexOfNextContext].NumberOfIterations;
+                    counter += sum;
+                }
+                currentContext = jobs[indexOfNextContext].newContext;
+            }
+        }
+
+        static void Generate(int maxNumberOfIterations)
+        {
+            Stopwatch sw = new Stopwatch();
+            string entry;
+            sw.Start();
+            GenerateMultiThreading(maxNumberOfIterations / 5);
+            sw.Stop();
+            if (sw.Elapsed.CompareTo(new TimeSpan(0, 0, 2)) > 0)
+            {
+                TimeSpan estimatedDuration = TimeSpan.FromTicks(sw.Elapsed.Ticks * 5);
+                Console.WriteLine("Estimated duration: {0}", estimatedDuration);
+            }
+            sw.Start();
+
+            GenerateMultiThreading(maxNumberOfIterations * 4 / 5);
+            sw.Stop();
+            Console.WriteLine(sw.Elapsed);
+            currentContext.RndmMatrix.Print(transpositionNecessary);
+
+            // working cycle
+            while ((entry = Console.ReadLine()) != "end")
+            {
+                sw.Restart();
+
+                GenerateMultiThreading(maxNumberOfIterations);
+
+                sw.Stop();
+                Console.WriteLine(sw.Elapsed);
+
+                currentContext.RndmMatrix.Print(transpositionNecessary);
+            }
         }
 
         static void Main(string[] args)
         {
-            MatrixSize size;
-            int iterationsNumber;
             bool loadingFromFile = false;
             TextReader reader;
             if (args.Length > 0)
@@ -745,25 +1038,28 @@ namespace RP_BruteForce
                 Console.WriteLine("Enter sizes of random matrix.");
                 input = reader.ReadLine();
             }
-            if ((size = LoadMatrixSize(input)) == null) return;
-
-            RndmMatrix = new Matrix<bool>(size);
-            CountingMatrix = new Matrix<int>(size);
+            MatrixSize patternSize;
+            MatrixSize rndmMatrixSize;
+            if ((rndmMatrixSize = LoadMatrixSize(input)) == null) return;
 
             if (!loadingFromFile) Console.WriteLine("Enter sizes of pattern matrix.");
 
-            if ((size = LoadMatrixSize(reader.ReadLine())) == null) return;
-            else if (size.linesNumber > RndmMatrix.linesNumber || size.columnNumber > RndmMatrix.columnNumber)
+            if ((patternSize = LoadMatrixSize(reader.ReadLine())) == null) return;
+            else if (patternSize.linesNumber > rndmMatrixSize.linesNumber || patternSize.columnNumber > rndmMatrixSize.columnNumber)
             {
                 ReportError("Pattern matrix can't be larger than generating matrix.");
                 return;
             }
 
-            PatternMatrix = new Matrix<bool>(size);
+            Matrix01 patternMatrix = new Matrix01(patternSize);
             if (!loadingFromFile) Console.WriteLine("Enter pattern 01-matrix of given sizes.");
             try
             {
-                LoadPatternMatrix(reader);
+                if (!patternMatrix.LoadPattern(reader))
+                {
+                    ReportError("The matrix must contain only 0 or 1.");
+                    return;
+                }
             }
             catch (FormatException)
             {
@@ -772,44 +1068,24 @@ namespace RP_BruteForce
             }
 
             // transpose matrix in case the pattern has more rows than columns
-            if (PatternMatrix.linesNumber > PatternMatrix.columnNumber)
+            if (patternMatrix.LinesNumber > patternMatrix.ColumnNumber)
             {
-                MatrixSize transposedSize = new MatrixSize(RndmMatrix.columnNumber, RndmMatrix.linesNumber);
-                RndmMatrix = new Matrix<bool>(transposedSize);
-                CountingMatrix = new Matrix<int>(transposedSize);
-                PatternMatrix = TransposeMatrix(PatternMatrix);
-                transpositionIsNeeded = true;
+                MatrixSize transposedSize = new MatrixSize(rndmMatrixSize.columnNumber, rndmMatrixSize.linesNumber);
+                patternMatrix.Transpose();
+                transpositionNecessary = true;
+                rndmMatrixSize = transposedSize;
             }
-
+            int numberOfIterations;
             if (!loadingFromFile) Console.WriteLine("Enter number of random iterations.");
-            if (!int.TryParse(reader.ReadLine(), out iterationsNumber) || iterationsNumber < 1)
+            if (!int.TryParse(reader.ReadLine(), out numberOfIterations) || numberOfIterations < 1)
             {
                 ReportError("Wrong format of integer.");
                 return;
             }
             Console.WriteLine("**Enter \"end\" to exit or any key to continue**");
 
-            Stopwatch sw = new Stopwatch();
-
-            Context context = new Context(RndmMatrix, PatternMatrix, CountingMatrix);
-            while (PatternMatrix.numberOf1 > RndmMatrix.numberOf1)
-            {
-                ChangeAndTestMatrix(context);
-            }
-
-            string entry;
-            do
-            {
-                sw.Restart();
-                for (int i = 0; i < iterationsNumber; i++)
-                {
-                    ChangeAndTestMatrix(context);
-                }
-                sw.Stop();
-                Console.WriteLine(sw.Elapsed);
-                PrintMatrix(RndmMatrix);
-
-            } while ((entry = Console.ReadLine()) != "end");
+            currentContext = new Context(rndmMatrixSize, patternMatrix);
+            Generate(numberOfIterations);
         }
     }
 }
