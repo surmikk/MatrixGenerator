@@ -749,10 +749,9 @@ namespace RP_BruteForce
     {
         public Context originalContext;
         public Context newContext;
-        public Random rndm;
-        private int changedLine;
-        private int changedColumn;
-        public int NumberOfIterations { get; private set; }
+        public RandomGenerator generator;
+        public Point ChangedPoint { get; private set; }
+
         /// <summary>
         /// True if the corresponding task has found another matrix not containing pattern.
         /// </summary>
@@ -762,12 +761,10 @@ namespace RP_BruteForce
         /// </summary>
         public bool solutionFound = false;
 
-        public Job(Context context, Random rndm, int changedLine, int changedColumn)
+        public Job(Context context, RandomGenerator generator)
         {
             originalContext = context;
-            this.rndm = rndm;
-            this.changedLine = changedLine;
-            this.changedColumn = changedColumn;
+            this.generator = generator;
         }
 
         /// <summary>
@@ -777,20 +774,12 @@ namespace RP_BruteForce
         {
             do
             {
-                NumberOfIterations++;
-                newContext = originalContext.GetNext(changedLine, changedColumn);
+                ChangedPoint = generator.Next();
+                newContext = originalContext.GetNext(ChangedPoint.line, ChangedPoint.column);
                 Result = newContext.TestMatrix();
                 if (Result)
                 {
                     solutionFound = true;
-                }
-                else
-                {
-                    lock (rndm)
-                    {
-                        changedLine = rndm.Next(originalContext.RndmMatrix.LinesNumber);
-                        changedColumn = rndm.Next(originalContext.RndmMatrix.ColumnNumber);
-                    }
                 }
             } while (!solutionFound);
         }
@@ -828,52 +817,40 @@ namespace RP_BruteForce
         /// It is faster to work with transposed matrix, so in the end it must be transposed again
         /// </summary>
         static bool transpositionNecessary = false;
-        static Random randomGenerator = new Random();
+
         /// <summary>
-        /// Starts N tasks and returns index of the succesful one, prefering a creation of 1 instead of its removal.
+        /// Starts N tasks, waits until at least one task is successful, then returns index of a successful task with the lowest point ID
         /// </summary>
-        /// <param name="quickMode">Indicates if we need to check only the first loop in each thread</param>
         /// <param name="jobs">Contains control and return variables for each thread</param>
-        static int ProcessNTasks(int numberOfThreads, bool quickMode, Job[] jobs)
+        static int ProcessNTasks(int numberOfThreads, Job[] jobs)
         {
             Task[] tasks = new Task[numberOfThreads];
             for (int i = 0; i < numberOfThreads; i++)
             {
                 tasks[i] = new Task(jobs[i].Run);
+                tasks[i].Start();
             }
-            foreach (var task in tasks)
-            {
-                task.Start();
-            }
-            int indexOfNextContext = -1;
-            // in normal mode this thread waits for the first finished created thread
-            // in quick mode, threads are "aborted" immediately and this thread checks their results
-            if (!quickMode)
-            {
-                indexOfNextContext = Task.WaitAny(tasks);
-            }
+            // this thread waits for the first finished created thread
+            int firstEndedIndex = Task.WaitAny(tasks);
+            int indexOfNextContext = firstEndedIndex;
+
             for (int i = 0; i < numberOfThreads; i++)
             {
-                // kind aborting of all threads
+                // kind ending of all threads
                 jobs[i].solutionFound = true;
             }
 
-            // checks if the finished thread found a solution with 1 element creation
-            if (indexOfNextContext != -1 && jobs[indexOfNextContext].newContext.Element1Created)
-            {
-                return indexOfNextContext;
-            }
-
-            // otherwise waits for the termination of all threads and checks their result
+            // waits for the termination of all threads
             Task.WaitAll(tasks);
+
+            // selecting the first successful thread according to the changed point ID
             for (int i = 0; i < numberOfThreads; i++)
             {
-                if (jobs[i].Result)
+                if (i != firstEndedIndex && jobs[i].Result)
                 {
-                    indexOfNextContext = i;
-                    if (jobs[i].newContext.Element1Created)
+                    if (jobs[i].ChangedPoint.ID < jobs[indexOfNextContext].ChangedPoint.ID)
                     {
-                        break;
+                        indexOfNextContext = i;
                     }
                 }
             }
@@ -881,86 +858,42 @@ namespace RP_BruteForce
         }
 
         static Context currentContext;
+        static RandomGenerator randomGenerator;
+        static int numberOfCycles = 1;
+        static int totalIterations;
+        static int numberOfThreads = 1;
         /// <summary>
         /// Process given number of iterations using multithreading
         /// </summary>
         static void GenerateMultiThreading(int numberOfIterations)
         {
-            int numberOfThreads = Environment.ProcessorCount;
-            Job[] jobs = new Job[numberOfThreads];
+            Job[] jobs;
             int counter = 0;
-
+            int initialID;
             while (counter < numberOfIterations)
             {
-                bool quickSolutionFound = false;
-                int necessaryNumberOfThreads = numberOfThreads;
-                // generating initial positions for jobs
-                int lineToChange = 0;
-                int columnToChange = 0; //default values, will be changed
+                initialID = randomGenerator.IterationsCounter;
+                jobs = new Job[numberOfThreads];
                 for (int i = 0; i < numberOfThreads; i++)
                 {
-                    lock (randomGenerator)
-                    {
-                        lineToChange = randomGenerator.Next(currentContext.RndmMatrix.LinesNumber);
-                        columnToChange = randomGenerator.Next(currentContext.RndmMatrix.ColumnNumber);
-                    }
-                    if (currentContext.RndmMatrix.Element[lineToChange][columnToChange])
-                    {
-                        // there is a 1 element on the initial coordinates, swapping to 0 makes the quick solution
-                        // we need to check if the previous threads initially not contain a slow solution that we could skip
-                        quickSolutionFound = true;
-                        necessaryNumberOfThreads = i;
-                        break;
-                    }
-                    else
-                    {
-                        jobs[i] = new Job(currentContext, randomGenerator, lineToChange, columnToChange);
-                    }
+                    jobs[i] = new Job(currentContext, randomGenerator);
                 }
 
-                int indexOfNextContext = ProcessNTasks(necessaryNumberOfThreads, quickSolutionFound, jobs);
+                int indexOfNextContext = ProcessNTasks(numberOfThreads, jobs);
 
                 // increasing counter and changing to the new context
-                if (quickSolutionFound)
-                {
-                    counter += necessaryNumberOfThreads + 1;
-                    if (indexOfNextContext == -1)
-                    {
-                        currentContext = currentContext.GetNext(lineToChange, columnToChange);
-                        continue;
-                    }
-                }
-                else
-                {
-                    //an estimate of the number of iterations that occurred in other threads before the solution took a turn
-                    int sum = 0;
-                    int minIterationsNumber = int.MaxValue;
-                    int iterationsNumber;
-                    for (int i = 0; i < numberOfThreads; i++)
-                    {
-                        iterationsNumber = jobs[i].NumberOfIterations;
-                        if (i != indexOfNextContext)
-                        {
-                            sum += iterationsNumber;
-                        }
-                        if (iterationsNumber < minIterationsNumber)
-                        {
-                            minIterationsNumber = iterationsNumber;
-                        }
-                    }
-                    if (minIterationsNumber == 1 || minIterationsNumber == 0)
-                    {
-                        sum = Environment.ProcessorCount - 1;
-                    }
-                    else
-                    {
-                        sum = sum * (minIterationsNumber - 1) / minIterationsNumber;
-                    }
-
-                    sum += jobs[indexOfNextContext].NumberOfIterations;
-                    counter += sum;
-                }
+                int difference = jobs[indexOfNextContext].ChangedPoint.ID - initialID;
+                counter += difference;
                 currentContext = jobs[indexOfNextContext].newContext;
+
+                totalIterations += difference;
+                numberOfCycles++;
+
+                // increasing the number of threads in case the average number of empty iterations is greater
+                if (numberOfThreads != Environment.ProcessorCount && totalIterations / numberOfCycles > numberOfThreads)
+                {
+                    numberOfThreads++;
+                }
             }
         }
 
@@ -1085,7 +1018,51 @@ namespace RP_BruteForce
             Console.WriteLine("**Enter \"end\" to exit or any key to continue**");
 
             currentContext = new Context(rndmMatrixSize, patternMatrix);
+            randomGenerator = new RandomGenerator(rndmMatrixSize);
             Generate(numberOfIterations);
+        }
+    }
+
+    class RandomGenerator
+    {
+        Random rndm = new Random();
+        readonly int totalLines;
+        readonly int totalColumns;
+        // used to number generated points
+        public int IterationsCounter { get; private set; }
+        readonly object objectToLock = new object();
+        public RandomGenerator(MatrixSize size)
+        {
+            totalLines = size.linesNumber;
+            totalColumns = size.columnNumber;
+        }
+        /// <summary>
+        /// returns random coordinates in the matrix
+        /// </summary>
+        public Point Next()
+        {
+            Point point;
+            lock (objectToLock)
+            {
+                IterationsCounter++;
+                point.line = rndm.Next(totalLines);
+                point.column = rndm.Next(totalColumns);
+                point.ID = IterationsCounter;
+            }
+            return point;
+        }
+    }
+
+    struct Point
+    {
+        public int line;
+        public int column;
+        public int ID;
+        public Point(int line, int column, int ID)
+        {
+            this.line = line;
+            this.column = column;
+            this.ID = ID;
         }
     }
 }
